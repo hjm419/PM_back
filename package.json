@@ -1,16 +1,28 @@
 {
+  "name": "kumoh-pm-server",
+  "version": "1.0.0",
+  "description": "Kumoh PM Control Server",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "express",
+    "api",
+    "kickboard"
+  ],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.0",
     "pg": "^8.16.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
-  },
-  "main": "app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon app.js"
   }
 }
