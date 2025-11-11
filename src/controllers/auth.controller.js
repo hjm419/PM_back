@@ -65,8 +65,20 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
+const logout = async (req, res, next) => {
+    try {
+        // (참고) JWT는 상태가 없으므로, 클라이언트가 토큰을 삭제하는 것이 핵심입니다.
+        // 서버는 이 요청을 받고 "로그아웃 처리됨"을 확인만 해줍니다.
+        // (※ 실제 서비스에서는 이 토큰을 '블랙리스트'에 추가하는 로직이 들어갈 수 있습니다.)
+        res.status(200).json(apiResponse.success({}, "Logout successful"));
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
   login,
   register,
   verifyToken,
+    logout,
 };
