@@ -8,15 +8,15 @@ const apiResponse = require("../utils/apiResponse");
  */
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { login_id, user_pw } = req.body;
 
-    if (!email || !password) {
+    if (!login_id || !user_pw) {
       return res
         .status(400)
         .json(apiResponse.error("Email and password are required", 400));
     }
 
-    const result = await authService.login(email, password);
+    const result = await authService.login(login_id, user_pw);
     res.status(200).json(apiResponse.success(result, "Login successful"));
   } catch (error) {
     next(error);

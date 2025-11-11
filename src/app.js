@@ -5,11 +5,11 @@ const express = require("express");
 const cors = require("cors");
 
 // 미들웨어 및 라우터 가져오기
-const apiRouter = require("./src/api");
+const apiRouter = require("./api");
 const {
   errorHandler,
   notFoundHandler,
-} = require("./src/middleware/error.handler");
+} = require("./middleware/error.handler");
 
 // Express 앱 생성 및 설정
 const app = express();
@@ -29,8 +29,8 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-// API v1 라우터 연결
-app.use("/api/v1", apiRouter);
+// API 라우터 연결
+app.use("/api", apiRouter);
 
 // 404 핸들러
 app.use(notFoundHandler);

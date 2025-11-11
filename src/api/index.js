@@ -12,7 +12,7 @@ const adminRoutes = require("./admin");
 
 // 기본 경로
 router.get("/", (req, res) => {
-  res.json({ message: "API v1 엔드포인트" });
+  res.json({ message: "API 엔드포인트" });
 });
 
 // 라우터 연결
