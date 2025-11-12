@@ -3,7 +3,7 @@ const userService = require("../services/user.service");
 const apiResponse = require("../utils/apiResponse");
 
 /**
- * GET /api/v1/users/me
+ * GET /api/users/me
  * 현재 사용자 정보 조회
  */
 const getMe = async (req, res, next) => {
@@ -24,7 +24,30 @@ const getMe = async (req, res, next) => {
 };
 
 /**
- * GET /api/v1/users
+ * PUT /api/v1/users/me
+ * 현재 사용자 정보 업데이트
+ */
+const updateMe = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId; // ⬅️ 토큰에서 "내" ID를 가져옴
+        const updateData = req.body; // ⬅️ { user_name, telno }
+
+        if (!userId) {
+            return res
+                .status(401)
+                .json(apiResponse.error("User not authenticated", 401));
+        }
+
+        const updatedUser = await userService.updateUser(userId, updateData);
+        res.status(200).json(apiResponse.success(updatedUser, "User updated"));
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * GET /api/users
  * 모든 사용자 조회 (관리자 전용)
  */
 const getAllUsers = async (req, res, next) => {
@@ -92,6 +115,7 @@ const deleteUser = async (req, res, next) => {
 
 module.exports = {
   getMe,
+    updateMe,
   getAllUsers,
   getUserById,
   updateUser,

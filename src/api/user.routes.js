@@ -6,6 +6,8 @@ const authMiddleware = require("../middleware/auth.middleware");
 
 // 현재 사용자 정보 조회
 router.get("/me", authMiddleware.verifyToken, userController.getMe);
+// 현재 사용자 정보 업데이트 (PUT)
+router.put("/me", authMiddleware.verifyToken, userController.updateMe);
 
 // 모든 사용자 조회 (관리자 전용)
 router.get(

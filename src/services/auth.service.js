@@ -1,7 +1,7 @@
-// PM_back/src/services/auth.service.js
-
+// 인증 비즈니스 로직 (로그인, 토큰 생성 등)
 const jwt = require("jsonwebtoken");
 const config = require("../config");
+const User = require("../models/user.model"); // ⬅️ (★추가★) User 모델 가져오기
 
 class AuthService {
     /**
@@ -11,35 +11,32 @@ class AuthService {
      * @returns {Promise<{token, user}>}
      */
     async login(login_id, user_pw) {
-        // const user = await User.findByLoginId(login_id);
-        // if (!user || !(await user.verifyPassword(user_pw))) {
-        //   throw new Error('Invalid login credentials');
-        // }
+        // --- (★수정★) 시뮬레이션 제거 ---
 
-        // --- (시뮬레이션 수정) ---
-        // DB에서 찾았다고 가정한 'user' 객체 (t_user 스키마 기준)
-        const foundUser = {
-            user_id: "a1b2c3d4-test-id", // ⬅️ Primary Key
-            login_id: login_id,           // ⬅️ 로그인 ID
-            nickname: "테스트관리자",     // ⬅️ 닉네임
-            safety_score: 95,            // ⬅️ 안전 점수
-            role: "admin",               // ⬅️ 권한
-            user_name: "김테스트",        // ⬅️ 실명
-            telno: "010-0000-1111"       // ⬅️ 전화번호
-        };
+        // 1. (★수정★) DB에서 login_id로 사용자 찾기
+        const user = await User.findByLoginId(login_id);
 
-        // JWT 토큰 생성 (필수 정보만 담음)
+        // 2. (★수정★) 사용자 확인 및 비밀번호 비교
+        // (⚠️ 보안 경고: 실제 서비스에서는 user.user_pw !== user_pw 대신
+        //    bcrypt.compare(user_pw, user.user_pw)를 사용해야 합니다.)
+        if (!user || user.user_pw !== user_pw) {
+            throw new Error('아이디 또는 비밀번호가 일치하지 않습니다.');
+        }
+
+        // (중요) 프론트엔드로 보내기 전, 비밀번호 정보 삭제
+        delete user.user_pw;
+
+        // 3. JWT 토큰 생성 (필수 정보만 담음)
         const token = jwt.sign(
-            { userId: foundUser.user_id, loginId: foundUser.login_id, role: foundUser.role },
+            { userId: user.user_id, loginId: user.login_id, role: user.role },
             config.JWT_SECRET,
             { expiresIn: config.JWT_EXPIRATION }
         );
 
-        // ⬇️ (핵심)
-        // token과 사용자 정보 객체(user)를 반환
+        // 4. (★수정★) 실제 DB에서 찾은 user 객체 반환
         return {
             token: token,
-            user: foundUser // ⬅️ t_user와 일치하는 사용자 객체
+            user: user // ⬅️ DB에서 가져온 실제 사용자 객체
         };
     }
 
@@ -65,6 +62,7 @@ class AuthService {
      * @returns {Promise<object>}
      */
     async register(email, password, name) {
+        // (참고) t_user 스키마에 맞게 회원가입 로직도 수정 필요
         return { userId: "temp-id", email, name };
     }
 }
