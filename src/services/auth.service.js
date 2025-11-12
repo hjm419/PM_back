@@ -70,12 +70,12 @@ class AuthService {
     }
 
     // 2. 사용자 생성
-    // Note: User.create currently expects { login_id, user_pw, user_name, role }
+    // Note: User.create currently expects { login_id, user_pw, user_name, telno }
     const toCreate = {
       login_id: userId,
       user_pw: password,
-      user_name: nickname,
-      // telno is not included in current create SQL; include if schema updated
+      nickname: nickname,
+      telNum: telNum
     };
 
     const created = await User.create(toCreate);

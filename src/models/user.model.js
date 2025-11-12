@@ -67,12 +67,29 @@ class User {
      */
     static async create(userData) {
         try {
-            // (참고: 실제 회원가입 시 t_user 스키마에 맞게 수정 필요)
-            const { login_id, user_pw, user_name, role = 'user' } = userData;
+            // 1. 변수 이름 매칭 확인 (userData에서 꺼내기)
+            // 프론트엔드에서 'telNum'으로 보냈는지, 'phone_number'로 보냈는지 꼭 확인하세요!
+            const { login_id, user_pw, nickname, telNum } = userData;
+
+            // [디버깅] 실제로 값이 잘 들어왔는지 서버 로그로 확인 (이게 제일 중요합니다!)
+            console.log('### 회원가입 데이터 확인 ###');
+            console.log('ID:', login_id);
+            console.log('PW:', user_pw);
+            console.log('Nick:', nickname);
+            console.log('Tel:', telNum); // <--- 여기가 undefined라면 프론트엔드 코드 수정 필요
+
+            // 2. 필수 값 검증 (DB에 보내기 전에 미리 막기)
+            if (!login_id || !user_pw || !nickname || !telNum) {
+                throw new Error('필수 정보가 누락되었습니다. (ID, PW, 닉네임, 전화번호 확인 필요)');
+            }
+
+            // 3. DB 쿼리 실행
+            // user_id, role, safety_score는 DB가 알아서 채우므로 쿼리에서 뺍니다.
             const result = await db.query(
-                'INSERT INTO t_user (login_id, user_pw, user_name, role) VALUES ($1, $2, $3, $4) RETURNING *',
-                [login_id, user_pw, user_name, role]
+                'INSERT INTO t_user (login_id, user_pw, nickname, telno) VALUES ($1, $2, $3, $4) RETURNING *',
+                [login_id, user_pw, nickname, telNum]
             );
+
             return result.rows[0];
         } catch (error) {
             console.error('DB Error:', error);
