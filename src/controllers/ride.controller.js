@@ -34,12 +34,12 @@ const startRide = async (req, res, next) => {
 };
 
 /**
- * POST /api/v1/rides/:id/end
+ * POST /api/rides/:id/end
  * 라이드 종료
  */
 const endRide = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { rideId } = req.params;
     const { endLocation } = req.body;
 
     if (!endLocation) {
@@ -48,7 +48,7 @@ const endRide = async (req, res, next) => {
         .json(apiResponse.error("End location is required", 400));
     }
 
-    const result = await rideService.endRide(id, endLocation);
+    const result = await rideService.endRide(rideId, endLocation);
     res.status(200).json(apiResponse.success(result, "Ride ended"));
   } catch (error) {
     next(error);
@@ -56,7 +56,7 @@ const endRide = async (req, res, next) => {
 };
 
 /**
- * GET /api/v1/rides/history
+ * GET /api/rides/history
  * 라이드 히스토리
  */
 const getUserRideHistory = async (req, res, next) => {
@@ -82,8 +82,22 @@ const getUserRideHistory = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/admin/rides
+ * 전체 주행 기록 조회 (관리자용)
+ */
+const getAllRides = async (req, res, next) => {
+  try {
+    // TODO: 전체 주행 기록 조회 구현
+    res.status(200).json(apiResponse.success([], "All rides retrieved"));
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   startRide,
   endRide,
   getUserRideHistory,
+  getAllRides,
 };

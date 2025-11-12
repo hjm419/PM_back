@@ -24,26 +24,25 @@ const getMe = async (req, res, next) => {
 };
 
 /**
- * PUT /api/v1/users/me
+ * PUT /api/users/me
  * 현재 사용자 정보 업데이트
  */
 const updateMe = async (req, res, next) => {
-    try {
-        const userId = req.user?.userId; // ⬅️ 토큰에서 "내" ID를 가져옴
-        const updateData = req.body; // ⬅️ { user_name, telno }
+  try {
+    const userId = req.user?.userId; // ⬅️ 토큰에서 "내" ID를 가져옴
+    const updateData = req.body; // ⬅️ { user_name, telno }
 
-        if (!userId) {
-            return res
-                .status(401)
-                .json(apiResponse.error("User not authenticated", 401));
-        }
-
-        const updatedUser = await userService.updateUser(userId, updateData);
-        res.status(200).json(apiResponse.success(updatedUser, "User updated"));
-
-    } catch (error) {
-        next(error);
+    if (!userId) {
+      return res
+        .status(401)
+        .json(apiResponse.error("User not authenticated", 401));
     }
+
+    const updatedUser = await userService.updateUser(userId, updateData);
+    res.status(200).json(apiResponse.success(updatedUser, "User updated"));
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -60,7 +59,7 @@ const getAllUsers = async (req, res, next) => {
 };
 
 /**
- * GET /api/v1/users/:id
+ * GET /api/users/:id
  * 특정 사용자 조회
  */
 const getUserById = async (req, res, next) => {
@@ -113,11 +112,29 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+const getMyRides = async (req, res, next) => {
+  // TODO: 내 주행내역 조회 구현
+  res.status(200).json({ message: "getMyRides not implemented" });
+};
+
+const getScoreHistory = async (req, res, next) => {
+  // TODO: 점수 변동 내역 구현
+  res.status(200).json({ message: "getScoreHistory not implemented" });
+};
+
+const getScoreStats = async (req, res, next) => {
+  // TODO: 감점 요인 통계 구현
+  res.status(200).json({ message: "getScoreStats not implemented" });
+};
+
 module.exports = {
   getMe,
-    updateMe,
+  updateMe,
   getAllUsers,
   getUserById,
   updateUser,
   deleteUser,
+  getMyRides,
+  getScoreHistory,
+  getScoreStats,
 };

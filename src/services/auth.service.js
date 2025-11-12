@@ -4,67 +4,143 @@ const config = require("../config");
 const User = require("../models/user.model"); // ⬅️ (★추가★) User 모델 가져오기
 
 class AuthService {
-    /**
-     * 사용자 로그인
-     * @param {string} login_id
-     * @param {string} user_pw
-     * @returns {Promise<{token, user}>}
-     */
-    async login(login_id, user_pw) {
-        // --- (★수정★) 시뮬레이션 제거 ---
+  /**
+   * 사용자 로그인
+   * @param {string} adminLoginId
+   * @param {string} password
+   * @returns {Promise<{accessToken, user}>}
+   */
+  async login(adminLoginId, password) {
+    // 1. DB에서 login_id로 사용자 찾기
+    const user = await User.findByLoginId(adminLoginId);
 
-        // 1. (★수정★) DB에서 login_id로 사용자 찾기
-        const user = await User.findByLoginId(login_id);
-
-        // 2. (★수정★) 사용자 확인 및 비밀번호 비교
-        // (⚠️ 보안 경고: 실제 서비스에서는 user.user_pw !== user_pw 대신
-        //    bcrypt.compare(user_pw, user.user_pw)를 사용해야 합니다.)
-        if (!user || user.user_pw !== user_pw) {
-            throw new Error('아이디 또는 비밀번호가 일치하지 않습니다.');
-        }
-
-        // (중요) 프론트엔드로 보내기 전, 비밀번호 정보 삭제
-        delete user.user_pw;
-
-        // 3. JWT 토큰 생성 (필수 정보만 담음)
-        const token = jwt.sign(
-            { userId: user.user_id, loginId: user.login_id, role: user.role },
-            config.JWT_SECRET,
-            { expiresIn: config.JWT_EXPIRATION }
-        );
-
-        // 4. (★수정★) 실제 DB에서 찾은 user 객체 반환
-        return {
-            token: token,
-            user: user // ⬅️ DB에서 가져온 실제 사용자 객체
-        };
+    // 2. 사용자 확인 및 비밀번호 비교
+    if (!user || user.user_pw !== password) {
+      throw new Error("Invalid loginId or password");
     }
 
-    /**
-     * 토큰 검증
-     * @param {string} token
-     * @returns {Promise<object>}
-     */
-    async verifyToken(token) {
-        try {
-            const decoded = jwt.verify(token, config.JWT_SECRET);
-            return decoded;
-        } catch (error) {
-            throw new Error("Invalid or expired token");
-        }
+    // 3. JWT 토큰 생성
+    const accessToken = jwt.sign(
+      { userId: user.user_id, loginId: user.login_id, role: user.role },
+      config.JWT_SECRET,
+      { expiresIn: config.JWT_EXPIRATION }
+    );
+
+    // 4. 응답 데이터: user 객체 (비밀번호 제외)
+    const responseUser = {
+      userId: user.user_id,
+      loginId: user.login_id,
+      nickname: user.user_name || user.nickname,
+      role: user.role,
+      telno: user.telno,
+    };
+
+    return {
+      accessToken,
+      user: responseUser,
+    };
+  }
+
+  /**
+   * 토큰 검증
+   * @param {string} token
+   * @returns {Promise<object>}
+   */
+  async verifyToken(token) {
+    try {
+      const decoded = jwt.verify(token, config.JWT_SECRET);
+      return decoded;
+    } catch (error) {
+      throw new Error("Invalid or expired token");
+    }
+  }
+
+  /**
+   * 사용자 회원가입
+   * @param {object} param0 { userId, password, nickname, telNum }
+   * @returns {Promise<object>} created user
+   */
+  async register({ userId, password, nickname, telNum }) {
+    // 1. 중복 체크 (login_id 기준)
+    const existing = await User.findByLoginId(userId);
+    if (existing) {
+      const err = new Error("UserId already exists");
+      err.status = 409;
+      throw err;
     }
 
-    /**
-     * 사용자 회원가입
-     * @param {string} email
-     * @param {string} password
-     * @param {string} name
-     * @returns {Promise<object>}
-     */
-    async register(email, password, name) {
-        // (참고) t_user 스키마에 맞게 회원가입 로직도 수정 필요
-        return { userId: "temp-id", email, name };
+    // 2. 사용자 생성
+    // Note: User.create currently expects { login_id, user_pw, user_name, role }
+    const toCreate = {
+      login_id: userId,
+      user_pw: password,
+      user_name: nickname,
+      // telno is not included in current create SQL; include if schema updated
+    };
+
+    const created = await User.create(toCreate);
+
+    // Return created user (at least nickname as spec requires)
+    return {
+      nickname: created.nickname || created.user_name,
+      user_id: created.user_id,
+      login_id: created.login_id,
+    };
+  }
+
+  /**
+   * 관리자 정보 조회
+   * @param {string} userId
+   * @returns {Promise<object>}
+   */
+  async getAdminInfo(userId) {
+    const admin = await User.findById(userId);
+    if (!admin) {
+      throw new Error("Admin not found");
     }
+    // 비밀번호 제외하고 반환
+    delete admin.user_pw;
+    return admin;
+  }
+
+  /**
+   * 관리자 정보 수정
+   * @param {string} userId
+   * @param {object} updateData { user_name, telno, ... }
+   * @returns {Promise<object>}
+   */
+  async updateAdminInfo(userId, updateData) {
+    const updated = await User.update(userId, updateData);
+    if (!updated) {
+      throw new Error("Admin not found");
+    }
+    delete updated.user_pw;
+    return updated;
+  }
+
+  /**
+   * 관리자 비밀번호 변경
+   * @param {string} userId
+   * @param {string} currentPassword
+   * @param {string} newPassword
+   * @returns {Promise<void>}
+   */
+  async changePassword(userId, currentPassword, newPassword) {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error("Admin not found");
+    }
+
+    // 현재 비밀번호 검증
+    if (user.user_pw !== currentPassword) {
+      const err = new Error("Current password is incorrect");
+      err.status = 401;
+      throw err;
+    }
+
+    // 새 비밀번호로 업데이트
+    await User.update(userId, { user_pw: newPassword });
+  }
 }
 
 module.exports = new AuthService();

@@ -1,17 +1,16 @@
 // POST /api/v1/admin/kpis
 const express = require("express");
 const router = express.Router();
-// const authMiddleware = require('../../middleware/auth.middleware');
-// const kpiController = require('../../controllers/kpi.controller');
 
-// // KPI 생성 (관리자 전용)
-// router.post('/', authMiddleware.isAdmin, kpiController.createKPI);
-//
-// // KPI 조회
-// router.get('/', authMiddleware.isAdmin, kpiController.getAllKPIs);
+const kpiController = require("../../controllers/kpi.controller");
 
-router.post("/", (req, res) => {
-  res.json({ message: "관리자: KPI 생성" });
-});
+// KPI 항목 신규 등록
+router.post("/", kpiController.createKPI);
+// KPI 목록 조회
+router.get("/", kpiController.getAllKPIs);
+// KPI 항목/가중치 수정
+router.put("/:kpiId", kpiController.updateKPI);
+// KPI 항목 삭제
+router.delete("/:kpiId", kpiController.deleteKPI);
 
 module.exports = router;

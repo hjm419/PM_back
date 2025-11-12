@@ -3,11 +3,16 @@
 
 const express = require("express");
 const router = express.Router();
+const authMiddleware = require("../../middleware/auth.middleware");
+
+// 인증 및 관리자 권한 미들웨어를 admin 전체에 적용
+router.use(authMiddleware.verifyToken, authMiddleware.isAdmin);
 
 // 관리자 라우터들 가져오기
 const userAdminRoutes = require("./user.admin.routes");
 const kpiAdminRoutes = require("./kpi.admin.routes");
-const statsAdminRoutes = require("./stats.admin.routes");
+const kickboardAdminRoutes = require("./kickboard.admin.routes");
+const rideAdminRoutes = require("./ride.admin.routes");
 
 // 기본 경로
 router.get("/", (req, res) => {
@@ -17,6 +22,7 @@ router.get("/", (req, res) => {
 // 관리자 라우터 연결
 router.use("/users", userAdminRoutes);
 router.use("/kpis", kpiAdminRoutes);
-router.use("/stats", statsAdminRoutes);
+router.use("/rides", rideAdminRoutes);
+router.use("/kickboards", kickboardAdminRoutes);
 
 module.exports = router;

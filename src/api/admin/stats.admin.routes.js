@@ -1,21 +1,16 @@
 // GET /api/v1/admin/stats/heatmap
 const express = require("express");
 const router = express.Router();
-// const authMiddleware = require('../../middleware/auth.middleware');
-// const statsController = require('../../controllers/stats.controller');
 
-// // 히트맵 통계
-// router.get('/heatmap', authMiddleware.isAdmin, statsController.getHeatmap);
-//
-// // 기타 통계
-// router.get('/', authMiddleware.isAdmin, statsController.getStats);
+const statsController = require("../../controllers/stats.controller");
 
-router.get("/heatmap", (req, res) => {
-  res.json({ message: "관리자: 히트맵 통계" });
-});
-
-router.get("/", (req, res) => {
-  res.json({ message: "관리자: 통계 조회" });
-});
+// 위험 로그 분석/조회
+router.get("/rides-logs", statsController.getRiskLogs);
+// 안전 점수 통계 조회
+router.get("/rides/safety-scores", statsController.getSafetyScores);
+// 전체/특정 유저 점수 재계산
+router.post("/rides/stats", statsController.recalculateStats);
+// 주행 기록 조회
+router.get("/rides", statsController.getAllRides);
 
 module.exports = router;
