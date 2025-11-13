@@ -1,4 +1,5 @@
-// 라이드 컨트롤러 계층 (Controllers) - "누가 일할지"
+// PM_back/src/controllers/ride.controller.js
+
 const rideService = require("../services/ride.service");
 const apiResponse = require("../utils/apiResponse");
 
@@ -7,30 +8,30 @@ const apiResponse = require("../utils/apiResponse");
  * 라이드 시작
  */
 const startRide = async (req, res, next) => {
-  try {
-    const userId = req.user?.userId;
-    const { kickboardId, startLocation } = req.body;
+    try {
+        const userId = req.user?.userId;
+        const { kickboardId, startLocation } = req.body;
 
-    if (!userId || !kickboardId || !startLocation) {
-      return res
-        .status(400)
-        .json(
-          apiResponse.error(
-            "User ID, kickboard ID, and start location are required",
-            400
-          )
+        if (!userId || !kickboardId || !startLocation) {
+            return res
+                .status(400)
+                .json(
+                    apiResponse.error(
+                        "User ID, kickboard ID, and start location are required",
+                        400
+                    )
+                );
+        }
+
+        const result = await rideService.startRide(
+            userId,
+            kickboardId,
+            startLocation
         );
+        res.status(201).json(apiResponse.success(result, "Ride started"));
+    } catch (error) {
+        next(error);
     }
-
-    const result = await rideService.startRide(
-      userId,
-      kickboardId,
-      startLocation
-    );
-    res.status(201).json(apiResponse.success(result, "Ride started"));
-  } catch (error) {
-    next(error);
-  }
 };
 
 /**
@@ -38,21 +39,21 @@ const startRide = async (req, res, next) => {
  * 라이드 종료
  */
 const endRide = async (req, res, next) => {
-  try {
-    const { rideId } = req.params;
-    const { endLocation } = req.body;
+    try {
+        const { rideId } = req.params;
+        const { endLocation } = req.body;
 
-    if (!endLocation) {
-      return res
-        .status(400)
-        .json(apiResponse.error("End location is required", 400));
+        if (!endLocation) {
+            return res
+                .status(400)
+                .json(apiResponse.error("End location is required", 400));
+        }
+
+        const result = await rideService.endRide(rideId, endLocation);
+        res.status(200).json(apiResponse.success(result, "Ride ended"));
+    } catch (error) {
+        next(error);
     }
-
-    const result = await rideService.endRide(rideId, endLocation);
-    res.status(200).json(apiResponse.success(result, "Ride ended"));
-  } catch (error) {
-    next(error);
-  }
 };
 
 /**
@@ -60,26 +61,26 @@ const endRide = async (req, res, next) => {
  * 라이드 히스토리
  */
 const getUserRideHistory = async (req, res, next) => {
-  try {
-    const userId = req.user?.userId;
-    const { limit = 10 } = req.query;
+    try {
+        const userId = req.user?.userId;
+        const { limit = 10 } = req.query;
 
-    if (!userId) {
-      return res
-        .status(401)
-        .json(apiResponse.error("User not authenticated", 401));
+        if (!userId) {
+            return res
+                .status(401)
+                .json(apiResponse.error("User not authenticated", 401));
+        }
+
+        const history = await rideService.getUserRideHistory(
+            userId,
+            parseInt(limit)
+        );
+        res
+            .status(200)
+            .json(apiResponse.success(history, "Ride history retrieved"));
+    } catch (error) {
+        next(error);
     }
-
-    const history = await rideService.getUserRideHistory(
-      userId,
-      parseInt(limit)
-    );
-    res
-      .status(200)
-      .json(apiResponse.success(history, "Ride history retrieved"));
-  } catch (error) {
-    next(error);
-  }
 };
 
 /**
@@ -87,17 +88,77 @@ const getUserRideHistory = async (req, res, next) => {
  * 전체 주행 기록 조회 (관리자용)
  */
 const getAllRides = async (req, res, next) => {
-  try {
-    // TODO: 전체 주행 기록 조회 구현
-    res.status(200).json(apiResponse.success([], "All rides retrieved"));
-  } catch (error) {
-    next(error);
-  }
+    try {
+        // (★수정★) v1.3 명세서의 모든 Query Params를 service로 전달
+        const filters = {
+            page: req.query.page,
+            size: req.query.size,
+            userId: req.query.userId,
+            pmId: req.query.pmId,
+            startDate: req.query.startDate,
+            endDate: req.query.endDate,
+        };
+
+        const { totalCount, rides } = await rideService.getAllRidesForAdmin(filters);
+
+        res.status(200).json(apiResponse.success({ totalCount, rides }, "All rides retrieved"));
+    } catch (error) {
+        next(error);
+    }
 };
 
+/**
+ * (★수정★) v1.3 명세서 5번 (GET /api/admin/rides/{rideId}/risks)
+ * 주행별 위험 로그 조회
+ */
+const getRideRiskLogs = async (req, res, next) => {
+    try {
+        const { rideId } = req.params;
+
+        // (★수정★) TODO -> rideService 호출
+        const { totalCount, logs } = await rideService.getRiskLogsByRideId(rideId);
+
+        res.status(200).json(apiResponse.success({ totalCount, logs }, "Ride risk logs retrieved"));
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * (★신규★) v1.3 명세서 (GET /api/admin/rides/{rideId}/path)
+ * 주행별 GPS 경로 조회
+ */
+const getRidePath = async (req, res, next) => {
+    try {
+        const { rideId } = req.params;
+        const pathData = await rideService.getRidePath(rideId);
+        res.status(200).json(apiResponse.success(pathData, "Ride path retrieved"));
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * (★신규★) GET /api/admin/rides/active
+ * 현재 운행 중인 라이드 목록 조회 (실시간 관제용)
+ */
+const getActiveRides = async (req, res, next) => {
+    try {
+        const { rides } = await rideService.getActiveRidesForAdmin();
+        // (★수정★) 프론트엔드가 kickboards 키를 기대하므로 kickboards로 보냄
+        res.status(200).json(apiResponse.success({ totalCount: rides.length, kickboards: rides }, "Active rides retrieved"));
+    } catch (error) {
+        next(error);
+    }
+};
+
+
 module.exports = {
-  startRide,
-  endRide,
-  getUserRideHistory,
-  getAllRides,
+    startRide,
+    endRide,
+    getUserRideHistory,
+    getAllRides,
+    getRideRiskLogs,
+    getRidePath,
+    getActiveRides, // (★신규★)
 };
