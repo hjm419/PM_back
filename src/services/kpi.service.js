@@ -1,4 +1,4 @@
-const KPI = require("../models/kpi.model");
+const KPIRepository = require("../repository/kpi.repository");
 
 class KPIService {
   /**
@@ -7,7 +7,7 @@ class KPIService {
    * @returns {Promise<object>} 생성된 KPI 객체
    */
   async createKPI({ name, weight }) {
-    const newKPI = await KPI.create({ name, weight });
+    const newKPI = await KPIRepository.create({ name, weight });
     return newKPI;
   }
   /**
@@ -15,7 +15,7 @@ class KPIService {
    * @returns {Promise<array>} KPI 항목 배열
    */
   async getAllKPIs() {
-    const kpis = await KPI.findAll();
+    const kpis = await KPIRepository.findAll();
     return kpis;
   }
   /**
@@ -25,7 +25,7 @@ class KPIService {
    * @returns {Promise<object>} 수정된 KPI 객체
    */
   async updateKPI(kpiId, updateData) {
-    const updatedKPI = await KPI.update(kpiId, updateData);
+    const updatedKPI = await KPIRepository.update(kpiId, updateData);
     return updatedKPI;
   }
   /**
@@ -34,7 +34,7 @@ class KPIService {
    * @returns {Promise<void>}
    */
   async deleteKPI(kpiId) {
-    await KPI.delete(kpiId);
+    await KPIRepository.delete(kpiId);
   }
 }
 

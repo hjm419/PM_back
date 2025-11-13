@@ -1,18 +1,18 @@
 // 인증 비즈니스 로직 (로그인, 토큰 생성 등)
 const jwt = require("jsonwebtoken");
 const config = require("../config");
-const User = require("../models/user.model"); // ⬅️ (★추가★) User 모델 가져오기
+const UserRepository = require("../repository/user.repository");
 
 class AuthService {
   /**
    * 사용자 로그인
-   * @param {string} adminLoginId
+   * @param {string} loginId
    * @param {string} password
    * @returns {Promise<{accessToken, user}>}
    */
-  async login(adminLoginId, password) {
+  async login(loginId, password) {
     // 1. DB에서 login_id로 사용자 찾기
-    const user = await User.findByLoginId(adminLoginId);
+    const user = await UserRepository.findByLoginId(loginId);
 
     // 2. 사용자 확인 및 비밀번호 비교
     if (!user || user.user_pw !== password) {
@@ -62,7 +62,7 @@ class AuthService {
    */
   async register({ userId, password, nickname, telNum }) {
     // 1. 중복 체크 (login_id 기준)
-    const existing = await User.findByLoginId(userId);
+    const existing = await UserRepository.findByLoginId(userId);
     if (existing) {
       const err = new Error("UserId already exists");
       err.status = 409;
@@ -70,15 +70,15 @@ class AuthService {
     }
 
     // 2. 사용자 생성
-    // Note: User.create currently expects { login_id, user_pw, user_name, telno }
+    // Note: UserRepository.create currently expects { login_id, user_pw, user_name, telno }
     const toCreate = {
       login_id: userId,
       user_pw: password,
       nickname: nickname,
-      telNum: telNum
+      telNum: telNum,
     };
 
-    const created = await User.create(toCreate);
+    const created = await UserRepository.create(toCreate);
 
     // Return created user (at least nickname as spec requires)
     return {
@@ -91,31 +91,42 @@ class AuthService {
   /**
    * 관리자 정보 조회
    * @param {string} userId
-   * @returns {Promise<object>}
+   * @returns {Promise<object>} { userId, loginId, nickname, telno, role }
    */
   async getAdminInfo(userId) {
-    const admin = await User.findById(userId);
+    const admin = await UserRepository.findById(userId);
     if (!admin) {
       throw new Error("Admin not found");
     }
-    // 비밀번호 제외하고 반환
-    delete admin.user_pw;
-    return admin;
+    // 응답 형식에 맞게 매핑
+    return {
+      userId: admin.user_id,
+      loginId: admin.login_id,
+      nickname: admin.user_name || admin.nickname,
+      telno: admin.telno,
+      role: admin.role,
+    };
   }
 
   /**
    * 관리자 정보 수정
    * @param {string} userId
    * @param {object} updateData { user_name, telno, ... }
-   * @returns {Promise<object>}
+   * @returns {Promise<object>} { userId, loginId, nickname, telno, role }
    */
   async updateAdminInfo(userId, updateData) {
-    const updated = await User.update(userId, updateData);
+    const updated = await UserRepository.update(userId, updateData);
     if (!updated) {
       throw new Error("Admin not found");
     }
-    delete updated.user_pw;
-    return updated;
+    // 응답 형식에 맞게 매핑
+    return {
+      userId: updated.user_id,
+      loginId: updated.login_id,
+      nickname: updated.user_name || updated.nickname,
+      telno: updated.telno,
+      role: updated.role,
+    };
   }
 
   /**
@@ -126,7 +137,7 @@ class AuthService {
    * @returns {Promise<void>}
    */
   async changePassword(userId, currentPassword, newPassword) {
-    const user = await User.findById(userId);
+    const user = await UserRepository.findById(userId);
     if (!user) {
       throw new Error("Admin not found");
     }
@@ -139,7 +150,7 @@ class AuthService {
     }
 
     // 새 비밀번호로 업데이트
-    await User.update(userId, { user_pw: newPassword });
+    await UserRepository.update(userId, { user_pw: newPassword });
   }
 }
 

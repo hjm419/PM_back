@@ -1,20 +1,20 @@
-// 라이드 모델
-const db = require("../config/db");
+// 라이드 모델 (T_RIDE 데이터 스키마)
 
 /**
- * 라이드 스키마 (PostgreSQL)
+ * T_RIDE 테이블 스키마 정의
+ *
  * CREATE TABLE t_ride (
- *   id SERIAL PRIMARY KEY,
- *   user_id INT NOT NULL REFERENCES t_user(id),
- *   kickboard_id INT NOT NULL REFERENCES t_kickboard(id),
+ *   ride_id VARCHAR(50) PRIMARY KEY,
+ *   user_id VARCHAR(50) NOT NULL REFERENCES t_user(user_id),
+ *   pm_id VARCHAR(50) NOT NULL REFERENCES t_kickboard(pm_id),
  *   start_location POINT,
  *   end_location POINT,
  *   start_time TIMESTAMP,
  *   end_time TIMESTAMP,
- *   distance DECIMAL(10, 2), -- km
- *   duration INT, -- 분 단위
- *   fare INT, -- 요금 (원)
- *   score INT, -- 사용자 점수
+ *   distance DECIMAL(10, 2),
+ *   duration INT,
+ *   fare INT,
+ *   score INT,
  *   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
  *   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
  * );
@@ -22,83 +22,54 @@ const db = require("../config/db");
 
 class Ride {
   /**
-   * 라이드 생성
-   * @param {object} data { user_id, kickboard_id, start_location, start_time }
-   * @returns {Promise<object>}
+   * Ride 스키마 필드 정의
    */
-  static async create(data) {
-    try {
-      const { user_id, kickboard_id, start_location, start_time } = data;
-      const result = await db.query(
-        "INSERT INTO t_ride (user_id, kickboard_id, start_location, start_time) VALUES ($1, $2, $3, $4) RETURNING *",
-        [user_id, kickboard_id, start_location, start_time]
-      );
-      return result.rows[0];
-    } catch (error) {
-      console.error("DB Error:", error);
-      throw error;
-    }
-  }
+  static schema = {
+    ride_id: { type: String, primaryKey: true, description: "라이드 ID" },
+    user_id: { type: String, foreignKey: "T_USER", description: "사용자 ID" },
+    pm_id: {
+      type: String,
+      foreignKey: "T_KICKBOARD",
+      description: "킥보드 ID",
+    },
+    start_location: { type: "Point", description: "시작 위치" },
+    end_location: { type: "Point", description: "종료 위치" },
+    start_time: { type: Date, description: "시작 시간" },
+    end_time: { type: Date, description: "종료 시간" },
+    distance: { type: Number, description: "거리 (km)" },
+    duration: { type: Number, description: "소요 시간 (분)" },
+    fare: { type: Number, description: "요금 (원)" },
+    score: { type: Number, description: "사용자 점수" },
+    created_at: {
+      type: Date,
+      default: "CURRENT_TIMESTAMP",
+      description: "생성 날짜",
+    },
+    updated_at: {
+      type: Date,
+      default: "CURRENT_TIMESTAMP",
+      description: "수정 날짜",
+    },
+  };
 
   /**
-   * ID로 라이드 조회
-   * @param {number} id
-   * @returns {Promise<object|null>}
+   * Ride 컬럼 매핑
    */
-  static async findById(id) {
-    try {
-      const result = await db.query("SELECT * FROM t_ride WHERE id = $1", [id]);
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error("DB Error:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * 사용자의 라이드 히스토리
-   * @param {number} user_id
-   * @param {number} limit
-   * @returns {Promise<array>}
-   */
-  static async findByUserId(user_id, limit = 10) {
-    try {
-      const result = await db.query(
-        "SELECT * FROM t_ride WHERE user_id = $1 ORDER BY start_time DESC LIMIT $2",
-        [user_id, limit]
-      );
-      return result.rows;
-    } catch (error) {
-      console.error("DB Error:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * 라이드 종료 (정보 업데이트)
-   * @param {number} id
-   * @param {object} updateData { end_location, end_time, distance, duration, fare, score }
-   * @returns {Promise<object>}
-   */
-  static async update(id, updateData) {
-    try {
-      const fields = Object.keys(updateData)
-        .map((key, index) => `${key} = $${index + 1}`)
-        .join(", ");
-      const values = Object.values(updateData);
-
-      const result = await db.query(
-        `UPDATE t_ride SET ${fields}, updated_at = NOW() WHERE id = $${
-          values.length + 1
-        } RETURNING *`,
-        [...values, id]
-      );
-      return result.rows[0];
-    } catch (error) {
-      console.error("DB Error:", error);
-      throw error;
-    }
-  }
+  static columns = [
+    "ride_id",
+    "user_id",
+    "pm_id",
+    "start_location",
+    "end_location",
+    "start_time",
+    "end_time",
+    "distance",
+    "duration",
+    "fare",
+    "score",
+    "created_at",
+    "updated_at",
+  ];
 }
 
 module.exports = Ride;

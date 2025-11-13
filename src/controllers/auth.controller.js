@@ -3,23 +3,20 @@ const authService = require("../services/auth.service");
 const apiResponse = require("../utils/apiResponse");
 
 /**
- * POST /api/auth/login (관리자 로그인)
- * @body { adminLoginId, password }
+ * POST /api/auth/login
+ * @body { loginId, password }
  * @returns { accessToken, user }
  */
 const login = async (req, res, next) => {
   try {
-    const { adminLoginId, password } = req.body;
-    if (!adminLoginId || !password) {
+    const { loginId, password } = req.body;
+    if (!loginId || !password) {
       return res
         .status(400)
-        .json(apiResponse.error("adminLoginId and password are required", 400));
+        .json(apiResponse.error("loginId and password are required", 400));
     }
     // 서비스에서 accessToken, user 반환
-    const { accessToken, user } = await authService.login(
-      adminLoginId,
-      password
-    );
+    const { accessToken, user } = await authService.login(loginId, password);
     return res
       .status(200)
       .json(apiResponse.success({ accessToken, user }, "Login successful"));
@@ -29,7 +26,7 @@ const login = async (req, res, next) => {
 };
 
 /**
- * POST /users/register
+ * POST api/app/users/register
  * 사용자 회원가입
  * body: { userId, password, nickname, telNum }
  * response: { nickname }
@@ -124,17 +121,23 @@ const getAdminMe = async (req, res, next) => {
 /**
  * PUT /api/auth/me
  * 관리자 프로필 수정
+ * Request: { nickname, telno }
+ * Response: { userId, loginId, nickname, telno, role }
  */
 const updateAdminMe = async (req, res, next) => {
   try {
     const userId = req.user?.userId;
-    const updateData = req.body;
+    const { nickname, telno } = req.body;
 
     if (!userId) {
       return res
         .status(401)
         .json(apiResponse.error("User not authenticated", 401));
     }
+
+    const updateData = {};
+    if (nickname) updateData.user_name = nickname;
+    if (telno) updateData.telno = telno;
 
     const updated = await authService.updateAdminInfo(userId, updateData);
     res.status(200).json(apiResponse.success(updated, "Admin profile updated"));
@@ -167,7 +170,14 @@ const changeAdminPassword = async (req, res, next) => {
     }
 
     await authService.changePassword(userId, currentPassword, newPassword);
-    res.status(200).json(apiResponse.success({}, "Password changed"));
+    res
+      .status(200)
+      .json(
+        apiResponse.success(
+          { message: "Password updated successfully" },
+          "Password changed"
+        )
+      );
   } catch (error) {
     next(error);
   }

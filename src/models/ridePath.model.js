@@ -1,57 +1,46 @@
-// 라이드 경로 모델 (경로 데이터 저장용)
-const db = require("../config/db");
+// 라이드 경로 모델 (T_RIDE_PATH 데이터 스키마)
 
 /**
- * 라이드 경로 스키마 (PostgreSQL)
+ * T_RIDE_PATH 테이블 스키마 정의
+ *
  * CREATE TABLE t_ride_path (
- *   id SERIAL PRIMARY KEY,
- *   ride_id INT NOT NULL REFERENCES t_ride(id),
- *   latitude DECIMAL(10, 8),
- *   longitude DECIMAL(11, 8),
- *   timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
- *   speed DECIMAL(5, 2), -- km/h
+ *   path_id VARCHAR(50) PRIMARY KEY,
+ *   ride_id VARCHAR(50) NOT NULL REFERENCES t_ride(ride_id),
+ *   location POINT,
+ *   speed DECIMAL(5, 2),
+ *   timestamp TIMESTAMP,
  *   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
  * );
  */
 
 class RidePath {
   /**
-   * 경로 데이터 추가
-   * @param {number} ride_id
-   * @param {object} pathData { latitude, longitude, timestamp, speed }
-   * @returns {Promise<object>}
+   * RidePath 스키마 필드 정의
    */
-  static async create(ride_id, pathData) {
-    try {
-      const { latitude, longitude, timestamp, speed } = pathData;
-      const result = await db.query(
-        "INSERT INTO t_ride_path (ride_id, latitude, longitude, timestamp, speed) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-        [ride_id, latitude, longitude, timestamp, speed]
-      );
-      return result.rows[0];
-    } catch (error) {
-      console.error("DB Error:", error);
-      throw error;
-    }
-  }
+  static schema = {
+    path_id: { type: String, primaryKey: true, description: "경로 ID" },
+    ride_id: { type: String, foreignKey: "T_RIDE", description: "라이드 ID" },
+    location: { type: "Point", description: "GPS 좌표" },
+    speed: { type: Number, description: "속도 (km/h)" },
+    timestamp: { type: Date, description: "기록 시간" },
+    created_at: {
+      type: Date,
+      default: "CURRENT_TIMESTAMP",
+      description: "생성 날짜",
+    },
+  };
 
   /**
-   * 라이드의 모든 경로 조회
-   * @param {number} ride_id
-   * @returns {Promise<array>}
+   * RidePath 컬럼 매핑
    */
-  static async findByRideId(ride_id) {
-    try {
-      const result = await db.query(
-        "SELECT * FROM t_ride_path WHERE ride_id = $1 ORDER BY timestamp ASC",
-        [ride_id]
-      );
-      return result.rows;
-    } catch (error) {
-      console.error("DB Error:", error);
-      throw error;
-    }
-  }
+  static columns = [
+    "path_id",
+    "ride_id",
+    "location",
+    "speed",
+    "timestamp",
+    "created_at",
+  ];
 }
 
 module.exports = RidePath;

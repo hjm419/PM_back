@@ -1,15 +1,13 @@
-// 킥보드 모델
-const db = require("../config/db");
+// 킥보드 모델 (T_KICKBOARD 데이터 스키마)
 
 /**
- * 킥보드 스키마 (PostgreSQL)
+ * T_KICKBOARD 테이블 스키마 정의
+ *
  * CREATE TABLE t_kickboard (
- *   id SERIAL PRIMARY KEY,
- *   device_id VARCHAR(50) UNIQUE NOT NULL,
- *   status VARCHAR(20) DEFAULT 'available', -- 'available', 'in_use', 'maintenance'
- *   latitude DECIMAL(10, 8),
- *   longitude DECIMAL(11, 8),
- *   battery_level INT DEFAULT 100,
+ *   pm_id VARCHAR(50) PRIMARY KEY,
+ *   pm_status VARCHAR(50) DEFAULT 'available',  -- 'available', 'in-use', 'maintenance'
+ *   location POINT,
+ *   battery INT,
  *   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
  *   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
  * );
@@ -17,86 +15,41 @@ const db = require("../config/db");
 
 class Kickboard {
   /**
-   * 모든 킥보드 조회
-   * @returns {Promise<array>}
+   * Kickboard 스키마 필드 정의
    */
-  static async findAll() {
-    try {
-      const result = await db.query("SELECT * FROM t_kickboard");
-      return result.rows;
-    } catch (error) {
-      console.error("DB Error:", error);
-      throw error;
-    }
-  }
+  static schema = {
+    pm_id: { type: String, primaryKey: true, description: "킥보드 ID" },
+    pm_status: {
+      type: String,
+      default: "available",
+      enum: ["available", "in-use", "maintenance"],
+      description: "킥보드 상태",
+    },
+    location: { type: "Point", description: "GPS 좌표" },
+    battery: { type: Number, description: "배터리 잔량 (%)" },
+    created_at: {
+      type: Date,
+      default: "CURRENT_TIMESTAMP",
+      description: "생성 날짜",
+    },
+    updated_at: {
+      type: Date,
+      default: "CURRENT_TIMESTAMP",
+      description: "수정 날짜",
+    },
+  };
 
   /**
-   * ID로 킥보드 조회
-   * @param {number} id
-   * @returns {Promise<object|null>}
+   * Kickboard 컬럼 매핑
    */
-  static async findById(id) {
-    try {
-      const result = await db.query("SELECT * FROM t_kickboard WHERE id = $1", [
-        id,
-      ]);
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error("DB Error:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * 킥보드 생성
-   * @param {object} data { device_id, status, latitude, longitude, battery_level }
-   * @returns {Promise<object>}
-   */
-  static async create(data) {
-    try {
-      const {
-        device_id,
-        status = "available",
-        latitude,
-        longitude,
-        battery_level = 100,
-      } = data;
-      const result = await db.query(
-        "INSERT INTO t_kickboard (device_id, status, latitude, longitude, battery_level) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-        [device_id, status, latitude, longitude, battery_level]
-      );
-      return result.rows[0];
-    } catch (error) {
-      console.error("DB Error:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * 킥보드 상태 업데이트
-   * @param {number} id
-   * @param {object} updateData { status, latitude, longitude, battery_level }
-   * @returns {Promise<object>}
-   */
-  static async update(id, updateData) {
-    try {
-      const fields = Object.keys(updateData)
-        .map((key, index) => `${key} = $${index + 1}`)
-        .join(", ");
-      const values = Object.values(updateData);
-
-      const result = await db.query(
-        `UPDATE t_kickboard SET ${fields}, updated_at = NOW() WHERE id = $${
-          values.length + 1
-        } RETURNING *`,
-        [...values, id]
-      );
-      return result.rows[0];
-    } catch (error) {
-      console.error("DB Error:", error);
-      throw error;
-    }
-  }
+  static columns = [
+    "pm_id",
+    "pm_status",
+    "location",
+    "battery",
+    "created_at",
+    "updated_at",
+  ];
 }
 
 module.exports = Kickboard;
