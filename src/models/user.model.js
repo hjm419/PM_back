@@ -7,7 +7,6 @@
  *   user_id VARCHAR(50) PRIMARY KEY,
  *   login_id VARCHAR(255) UNIQUE NOT NULL,
  *   user_pw VARCHAR(255) NOT NULL,
- *   user_name VARCHAR(100),
  *   nickname VARCHAR(100),
  *   safety_score INT DEFAULT 100,
  *   role VARCHAR(20) DEFAULT 'user',  -- 'user', 'admin'
@@ -30,7 +29,6 @@ class User {
       description: "로그인 ID",
     },
     user_pw: { type: String, required: true, description: "비밀번호" },
-    user_name: { type: String, description: "사용자명" },
     nickname: { type: String, description: "닉네임" },
     safety_score: { type: Number, default: 100, description: "안전 점수" },
     role: {
@@ -59,7 +57,6 @@ class User {
     "user_id",
     "login_id",
     "user_pw",
-    "user_name",
     "nickname",
     "safety_score",
     "role",

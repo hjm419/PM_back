@@ -136,7 +136,7 @@ const updateAdminMe = async (req, res, next) => {
     }
 
     const updateData = {};
-    if (nickname) updateData.user_name = nickname;
+    if (nickname) updateData.nickname = nickname;
     if (telno) updateData.telno = telno;
 
     const updated = await authService.updateAdminInfo(userId, updateData);

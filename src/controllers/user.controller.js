@@ -30,7 +30,7 @@ const getMe = async (req, res, next) => {
 const updateMe = async (req, res, next) => {
   try {
     const userId = req.user?.userId; // ⬅️ 토큰에서 "내" ID를 가져옴
-    const updateData = req.body; // ⬅️ { user_name, telno }
+    const updateData = req.body; // ⬅️ { nickname, telno }
 
     if (!userId) {
       return res
@@ -46,7 +46,7 @@ const updateMe = async (req, res, next) => {
 };
 
 /**
- * GET /api/users
+ * GET /api/admin/users
  * 모든 사용자 조회 (관리자 전용)
  */
 const getAllUsers = async (req, res, next) => {

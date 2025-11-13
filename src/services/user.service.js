@@ -32,15 +32,15 @@ class UserService {
   /**
    * 사용자 정보 업데이트
    * @param {string} userId (t_user의 'user_id' (pk)임)
-   * @param {object} updateData { user_name, telno }
+   * @param {object} updateData { nickname, telno }
    * @returns {Promise<object>}
    */
   async updateUser(userId, updateData) {
     // (보안) 업데이트 가능한 필드만 허용
     const allowedUpdates = {
-      user_name: updateData.user_name,
+      nickname: updateData.nickname,
       telno: updateData.telno,
-      // (참고) nickname 등 다른 필드도 허용하려면 여기에 추가
+      // (참고) 다른 필드도 허용하려면 여기에 추가
     };
 
     // undefined인 필드는 제거 (DB에 null로 업데이트되는 것 방지)

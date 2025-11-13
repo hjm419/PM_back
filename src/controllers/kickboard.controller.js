@@ -1,30 +1,43 @@
 // 킥보드 컨트롤러 계층 (Controllers) - "누가 일할지"
-const Kickboard = require("../models/kickboard.model");
+const kickboardService = require("../services/kickboard.service");
 const apiResponse = require("../utils/apiResponse");
 
 /**
- * GET /api/kickboards
- * 모든 킥보드 조회
+ * GET /api/admin/kickboards
+ * 모든 킥보드 조회 (관리자용, 페이징 및 필터링)
+ * Query Params: page, size, status
  */
 const getAllKickboards = async (req, res, next) => {
   try {
-    const kickboards = await Kickboard.findAll();
-    res
-      .status(200)
-      .json(apiResponse.success(kickboards, "All kickboards retrieved"));
+    const { page = 1, size = 10, status } = req.query;
+    const result = await kickboardService.getAllKickboards(
+      parseInt(page),
+      parseInt(size),
+      status
+    );
+
+    res.status(200).json(
+      apiResponse.success(
+        {
+          totalCount: result.totalCount,
+          kickboards: result.kickboards,
+        },
+        "All kickboards retrieved"
+      )
+    );
   } catch (error) {
     next(error);
   }
 };
 
 /**
- * GET /api/kickboards/:id
+ * GET /api/admin/kickboards/:pmId
  * 특정 킥보드 조회
  */
 const getKickboardById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const kickboard = await Kickboard.findById(id);
+    const { pmId } = req.params;
+    const kickboard = await kickboardService.getKickboardById(pmId);
 
     if (!kickboard) {
       return res
@@ -39,19 +52,19 @@ const getKickboardById = async (req, res, next) => {
 };
 
 /**
- * POST /api/kickboards
- * 새 킥보드 생성
+ * POST /api/admin/kickboards
+ * 킥보드 신규 등록
+ * Body: { pm_id, initialLocation, battery, model }
  */
 const createKickboard = async (req, res, next) => {
   try {
-    const { device_id, status, latitude, longitude, battery_level } = req.body;
+    const { pm_id, initialLocation, battery, model } = req.body;
 
-    const kickboard = await Kickboard.create({
-      device_id,
-      status,
-      latitude,
-      longitude,
-      battery_level,
+    const kickboard = await kickboardService.createKickboard({
+      pm_id,
+      initialLocation,
+      battery,
+      model,
     });
 
     res.status(201).json(apiResponse.success(kickboard, "Kickboard created"));
@@ -61,21 +74,16 @@ const createKickboard = async (req, res, next) => {
 };
 
 /**
- * PUT /api/kickboards/:id
+ * PUT /api/admin/kickboards/:pmId
  * 킥보드 정보 업데이트
+ * Body: { pm_status, location, battery }
  */
 const updateKickboard = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { pmId } = req.params;
     const updateData = req.body;
 
-    const kickboard = await Kickboard.update(id, updateData);
-
-    if (!kickboard) {
-      return res
-        .status(404)
-        .json(apiResponse.error("Kickboard not found", 404));
-    }
+    const kickboard = await kickboardService.updateKickboard(pmId, updateData);
 
     res.status(200).json(apiResponse.success(kickboard, "Kickboard updated"));
   } catch (error) {
@@ -84,19 +92,14 @@ const updateKickboard = async (req, res, next) => {
 };
 
 /**
- * DELETE /api/kickboards/:id
+ * DELETE /api/admin/kickboards/:pmId
  * 킥보드 삭제
  */
 const deleteKickboard = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const result = await Kickboard.delete(id);
+    const { pmId } = req.params;
 
-    if (!result) {
-      return res
-        .status(404)
-        .json(apiResponse.error("Kickboard not found", 404));
-    }
+    await kickboardService.deleteKickboard(pmId);
 
     res.status(200).json(apiResponse.success({}, "Kickboard deleted"));
   } catch (error) {
@@ -107,21 +110,21 @@ const deleteKickboard = async (req, res, next) => {
 /**
  * GET /api/app/kickboards
  * 주변 킥보드 찾기 (GPS 기반)
+ * Query Params: latitude, longitude, radius (기본값: 1000m)
  */
 const getNearbyKickboards = async (req, res, next) => {
   try {
     const { latitude, longitude, radius = 1000 } = req.query;
 
-    if (!latitude || !longitude) {
-      return res
-        .status(400)
-        .json(apiResponse.error("latitude and longitude are required", 400));
-    }
+    const kickboards = await kickboardService.getNearbyKickboards(
+      parseFloat(latitude),
+      parseFloat(longitude),
+      parseInt(radius)
+    );
 
-    // TODO: 주변 킥보드 조회 로직 구현 (거리 계산)
     res
       .status(200)
-      .json(apiResponse.success([], "Nearby kickboards retrieved"));
+      .json(apiResponse.success(kickboards, "Nearby kickboards retrieved"));
   } catch (error) {
     next(error);
   }
@@ -130,6 +133,7 @@ const getNearbyKickboards = async (req, res, next) => {
 /**
  * POST /api/app/kickboards/helmet
  * 헬멧 착용 인증
+ * Body: { kickboardId }
  */
 const verifyHelmet = async (req, res, next) => {
   try {

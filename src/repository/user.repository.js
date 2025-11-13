@@ -55,15 +55,15 @@ class UserRepository {
 
   /**
    * 사용자 생성
-   * @param {object} userData { login_id, user_pw, user_name, role, telno }
+   * @param {object} userData { login_id, user_pw, nickname, role, telno }
    * @returns {Promise<object>}
    */
   static async create(userData) {
     try {
-      const { login_id, user_pw, user_name, role = "user", telno } = userData;
+      const { login_id, user_pw, nickname, role = "user", telno } = userData;
       const result = await db.query(
-        "INSERT INTO t_user (login_id, user_pw, user_name, role, telno) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-        [login_id, user_pw, user_name, role, telno]
+        "INSERT INTO t_user (login_id, user_pw, nickname, role, telno) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+        [login_id, user_pw, nickname, role, telno]
       );
       return result.rows[0];
     } catch (error) {
