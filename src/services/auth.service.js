@@ -82,7 +82,7 @@ class AuthService {
 
     // Return created user (at least nickname as spec requires)
     return {
-      nickname: created.nickname || created.user_name,
+      nickname: created.nickname,
       user_id: created.user_id,
       login_id: created.login_id,
     };
