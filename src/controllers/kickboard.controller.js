@@ -1,6 +1,8 @@
 // 킥보드 컨트롤러 계층 (Controllers) - "누가 일할지"
 const Kickboard = require("../models/kickboard.model");
 const apiResponse = require("../utils/apiResponse");
+const aiService = require("../services/ai.service");
+const kickboardService = require("../services/kickboard.service");
 const { parseGeoJSON } = require("../utils/gis.util"); // (★신규★) GeoJSON 파서
 
 /**
@@ -149,34 +151,67 @@ const deleteKickboard = async (req, res, next) => {
  * 주변 킥보드 찾기 (GPS 기반)
  */
 const getNearbyKickboards = async (req, res, next) => {
-  try {
-    const { latitude, longitude, radius = 1000 } = req.query;
+    try {
+        const { latitude, longitude, radius = 1000 } = req.query;
 
-    if (!latitude || !longitude) {
-      return res
-        .status(400)
-        .json(apiResponse.error("latitude and longitude are required", 400));
+        if (!latitude || !longitude) {
+            return res
+                .status(400)
+                .json(apiResponse.error("latitude and longitude are required", 400));
+        }
+
+        // 서비스 호출하여 실제 DB 데이터 조회
+        const kickboards = await kickboardService.getNearbyKickboards(
+            parseFloat(latitude),
+            parseFloat(longitude),
+            parseInt(radius)
+        );
+
+        res
+            .status(200)
+            .json(apiResponse.success(kickboards, "Nearby kickboards retrieved"));
+    } catch (error) {
+        next(error);
     }
-
-    // TODO: 주변 킥보드 조회 로직 구현 (거리 계산)
-    res
-      .status(200)
-      .json(apiResponse.success([], "Nearby kickboards retrieved"));
-  } catch (error) {
-    next(error);
-  }
 };
 
 /**
  * POST /api/app/kickboards/helmet
- * 헬멧 착용 인증
  */
-const getNearbyKickboards = async (req, res, next) => {
-  // ... (기존 코드)
-};
-const verifyHelmet = async (req, res, next) => {
-  // ... (기존 코드)
-};
+    const verifyHelmet = async (req, res, next) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json(apiResponse.error("이미지 파일이 없습니다.", 400));
+            }
+
+            // ✨ 여기서 kickboardService가 아니라 aiService를 사용!
+            const aiResult = await aiService.checkHelmet(
+                req.file.buffer,
+                req.file.originalname
+            );
+
+            // AI 결과 분석 (confidence 0.5 이상)
+            // 파이썬 서버 응답 구조: { detections: [{ class_name, confidence, ... }] }
+            const detections = aiResult.detections || [];
+            const isHelmet = detections.some(d => d.class_name === 'helmet' && d.confidence >= 0.5);
+
+            if (isHelmet) {
+                return res.status(200).json(apiResponse.success({
+                    verified: true,
+                    message: "헬멧 인증 성공",
+                    score: detections[0]?.confidence || 0
+                }));
+            } else {
+                return res.status(200).json(apiResponse.success({
+                    verified: false,
+                    message: "헬멧이 감지되지 않았습니다.",
+                }));
+            }
+
+        } catch (error) {
+            next(error);
+        }
+    };
 
 module.exports = {
   getAllKickboards,
@@ -186,5 +221,5 @@ module.exports = {
   deleteKickboard,
   getNearbyKickboards, // (앱용)
   verifyHelmet, // (앱용)
-  lockKickboard,
+  // lockKickboard,
 };

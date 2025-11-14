@@ -1,4 +1,23 @@
 const KickboardRepository = require("../repository/kickboard.repository");
+const { parseGeoJSON } = require("../utils/gis.util");
+
+// [추가] 두 좌표 간 거리 계산 함수 (Haversine 공식) - 미터(m) 단위 반환
+const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3; // 지구 반지름 (미터)
+    const toRad = (deg) => (deg * Math.PI) / 180;
+
+    const φ1 = toRad(lat1);
+    const φ2 = toRad(lat2);
+    const Δφ = toRad(lat2 - lat1);
+    const Δλ = toRad(lon2 - lon1);
+
+    const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+};
 
 class KickboardService {
   /**
@@ -123,42 +142,52 @@ class KickboardService {
     return true;
   }
 
-  /**
-   * 주변 킥보드 찾기 (GPS 기반)
-   * @param {number} latitude - 사용자 위도
-   * @param {number} longitude - 사용자 경도
-   * @param {number} radius - 검색 반경 (m, 기본값: 1000)
-   * @returns {Promise<array>}
-   */
-  async getNearbyKickboards(latitude, longitude, radius = 1000) {
-    if (!latitude || !longitude) {
-      const err = new Error("latitude and longitude are required");
-      err.status = 400;
-      throw err;
+    /**
+     * 주변 킥보드 찾기 (GPS 기반)
+     * @param {number} latitude - 사용자 위도
+     * @param {number} longitude - 사용자 경도
+     * @param {number} radius - 검색 반경 (m, 기본값: 1000)
+     */
+    async getNearbyKickboards(latitude, longitude, radius = 1000) {
+        if (!latitude || !longitude) {
+            const err = new Error("latitude and longitude are required");
+            err.status = 400;
+            throw err;
+        }
+
+        // 1. 모든 킥보드 조회 (DB에서 가져옴)
+        const allKickboards = await KickboardRepository.findAll();
+
+        // 2. 필터링: 'available' 상태 + 반경(radius) 내 위치
+        const nearbyKickboards = allKickboards.filter((kb) => {
+            // (1) 사용 가능 상태인지 확인
+            if (kb.pm_status !== "available") return false;
+
+            // (2) 위치 데이터 파싱 (GeoJSON 문자열 -> {lat, lng} 객체)
+            const kbLocation = parseGeoJSON(kb.location);
+            if (!kbLocation) return false;
+
+            // (3) 거리 계산
+            const distance = getDistanceInMeters(
+                latitude,
+                longitude,
+                kbLocation.lat,
+                kbLocation.lng
+            );
+
+            // (4) 설정한 반경(예: 1000m) 이내인지 확인
+            return distance <= radius;
+        });
+
+        // 3. 결과 반환 (필요한 정보만 가공)
+        return nearbyKickboards.map((kb) => ({
+            pm_id: kb.pm_id,
+            pm_status: kb.pm_status,
+            location: parseGeoJSON(kb.location), // { lat, lng } 형태로 변환
+            battery: kb.battery,
+            model: kb.model, // 필요시 모델명도 반환
+        }));
     }
-
-    // 모든 이용 가능한 킥보드 조회
-    const allKickboards = await KickboardRepository.findAll();
-
-    // 'available' 상태의 킥보드만 필터링
-    const availableKickboards = allKickboards.filter(
-      (kb) => kb.pm_status === "available"
-    );
-
-    // 거리 계산 및 필터링 (간단한 예시: PostGIS 미사용 시)
-    const nearbyKickboards = availableKickboards.filter((kickboard) => {
-      // location 필드가 POINT 형식이라고 가정
-      // 실제 구현은 DB에서 ST_Distance 함수 사용 권장
-      return true; // TODO: 실제 거리 계산 로직 구현
-    });
-
-    return nearbyKickboards.map((kb) => ({
-      pm_id: kb.pm_id,
-      pm_status: kb.pm_status,
-      location: kb.location,
-      battery: kb.battery,
-    }));
-  }
 }
 
 module.exports = new KickboardService();
