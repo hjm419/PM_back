@@ -131,6 +131,7 @@ class RideService {
             endLoc: parseGeoJSON(ride.end_location),   // (★수정★) AS end_location
             fare: ride.fare,
             safetyScore: ride.score,
+            helmetOn: ride.is_helmet, // (★이 줄을 추가★)
         }));
 
         return { totalCount, rides };

@@ -40,8 +40,7 @@ class UserRepository {
     }
 
     /**
-     * (★수정★) 모든 사용자 조회 -> 페이징 및 검색 기능 추가
-     * (findAll -> findAndCountAllAdmin)
+     * 모든 사용자 조회 -> 페이징 및 검색 기능 추가
      * @param {object} filters { page, size, searchKeyword }
      * @returns {Promise<object>} { rows, totalCount }
      */
@@ -56,7 +55,7 @@ class UserRepository {
         const pageNum = parseInt(page, 10);
         const offset = (pageNum - 1) * limitNum;
 
-        // (★수정★) SELECT 구문에서 'status' 컬럼 제거
+        // (수정) SELECT 구문에서 'status' 컬럼 제거, 'role' 추가
         let query = `
             SELECT
                 user_id, login_id, nickname, safety_score, created_at, telno, role
@@ -74,7 +73,6 @@ class UserRepository {
 
         // 2. 검색어 (searchKeyword)
         if (searchKeyword) {
-            // (★수정★) ID, 닉네임, 연락처로 검색
             conditions.push(`(login_id ILIKE $${valueIndex} OR nickname ILIKE $${valueIndex} OR telno ILIKE $${valueIndex})`);
             values.push(`%${searchKeyword}%`);
             valueIndex++;
@@ -92,7 +90,7 @@ class UserRepository {
 
         try {
             const result = await db.query(query, values);
-            // (★수정★) 파라미터 개수 오류 수정
+            // (수정) 파라미터 개수 오류 수정
             const countResult = await db.query(
                 countQuery,
                 values.slice(0, values.length - 2) // LIMIT, OFFSET 값 제외
@@ -167,6 +165,28 @@ class UserRepository {
             return result.rowCount > 0;
         } catch (error) {
             console.error("DB Error:", error);
+            throw error;
+        }
+    }
+
+    /**
+     * (★신규★) 특정 사용자의 누적 통계 조회 (상세 팝업용)
+     * @param {string} userId
+     * @returns {Promise<object|null>} { total_rides, total_payment }
+     */
+    static async getUserStats(userId) {
+        try {
+            const query = `
+                SELECT
+                    COUNT(ride_id) AS "total_rides",
+                    SUM(fare) AS "total_payment"
+                FROM t_ride
+                WHERE user_id = $1
+            `;
+            const result = await db.query(query, [userId]);
+            return result.rows[0] || { total_rides: 0, total_payment: 0 };
+        } catch (error) {
+            console.error("DB Error (getUserStats):", error);
             throw error;
         }
     }

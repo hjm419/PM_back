@@ -16,7 +16,7 @@ class RideRepository {
                     ride_id, user_id, pm_id,
                     ST_AsGeoJSON(start_loc) AS start_location,
                     ST_AsGeoJSON(end_loc) AS end_location,
-                    start_time, end_time, distance, duration, fare, score
+                    start_time, end_time, distance, duration, fare, score, is_helmet
                 FROM t_ride
             `;
             const result = await db.query(query);
@@ -44,13 +44,13 @@ class RideRepository {
         const pageNum = parseInt(page, 10);
         const offset = (pageNum - 1) * limitNum;
 
-        // (★수정★) ST_AsGeoJSON + DB 컬럼명
+        // (★수정★) ST_AsGeoJSON + DB 컬럼명 + is_helmet 추가
         let query = `
             SELECT
                 ride_id, user_id, pm_id,
                 ST_AsGeoJSON(start_loc) AS start_location,
                 ST_AsGeoJSON(end_loc) AS end_location,
-                start_time, end_time, distance, duration, fare, score
+                start_time, end_time, distance, duration, fare, score, is_helmet
             FROM t_ride
         `;
         let countQuery = `SELECT COUNT(ride_id) FROM t_ride`;
@@ -91,6 +91,7 @@ class RideRepository {
                 countQuery,
                 values.slice(0, values.length - 2) // LIMIT, OFFSET 값 제외
             );
+
             return {
                 rows: result.rows,
                 totalCount: parseInt(countResult.rows[0].count, 10),
@@ -112,7 +113,7 @@ class RideRepository {
                     ride_id, user_id, pm_id,
                     ST_AsGeoJSON(start_loc) AS start_location,
                     ST_AsGeoJSON(end_loc) AS end_location,
-                    start_time, end_time, distance, duration, fare, score
+                    start_time, end_time, distance, duration, fare, score, is_helmet
                 FROM t_ride
                 WHERE ride_id = $1
             `;
@@ -134,7 +135,7 @@ class RideRepository {
                     ride_id, user_id, pm_id,
                     ST_AsGeoJSON(start_loc) AS start_location,
                     ST_AsGeoJSON(end_loc) AS end_location,
-                    start_time, end_time, distance, duration, fare, score
+                    start_time, end_time, distance, duration, fare, score, is_helmet
                 FROM t_ride
                 WHERE user_id = $1
             `;
@@ -279,8 +280,8 @@ class RideRepository {
                     k.battery,
                     ST_AsGeoJSON(k.location) AS location
                 FROM t_ride r
-                         -- (★핵심 수정★) r.pm_id (VARCHAR)를 BIGINT로 명시적 캐스팅하여 k.pm_id (BIGINT)와 JOIN
-                         JOIN t_kickboard k ON r.pm_id = k.pm_id
+                         -- (★핵심 수정★) r.pm_id 를 BIGINT로 명시적 캐스팅하여 k.pm_id (BIGINT)와 JOIN
+                         JOIN t_kickboard k ON r.pm_id::BIGINT = k.pm_id
                 WHERE r.end_time IS NULL
                 ORDER BY r.start_time DESC;
             `;

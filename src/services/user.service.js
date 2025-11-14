@@ -1,40 +1,77 @@
 // 사용자 비즈니스 로직
 const UserRepository = require("../repository/user.repository");
+const RiskLogRepository = require("../repository/risk-log.repository"); // (★추가★)
 
 class UserService {
     /**
-     * 사용자 정보 조회
+     * (★수정★) 사용자 정보 + 통계 조회 (이력 조회는 분리됨)
      * @param {string} userId (t_user의 'user_id' (pk)임)
-     * @returns {Promise<{id, email, name, role}>}
+     * @returns {Promise<object>}
      */
     async getUserById(userId) {
-        const user = await UserRepository.findById(userId);
-        if (user) {
-            // (중요) 비밀번호는 절대 반환하면 안 됨
-            delete user.user_pw;
+        // 1. 기본 정보
+        const userPromise = UserRepository.findById(userId);
+        // 2. 누적 통계
+        const statsPromise = UserRepository.getUserStats(userId);
+
+        // (★수정★) 이력 조회(historyPromise) 제거
+
+        // 2가지 DB 조회를 동시에 실행
+        const [user, stats] = await Promise.all([
+            userPromise,
+            statsPromise,
+        ]);
+
+        if (!user) {
+            return null; // 사용자가 없으면 null 반환
         }
-        return user;
+
+        // (중요) 비밀번호는 절대 반환하면 안 됨
+        delete user.user_pw;
+
+        // 4. 프론트엔드가 요청한 형식으로 데이터 조합
+        return {
+            ...user,
+            total_rides: parseInt(stats.total_rides || 0),
+            total_payment: parseInt(stats.total_payment || 0),
+            // (★수정★) risk_history 제거
+        };
+    }
+
+    /**
+     * (★신규★) 사용자의 위험 이력 페이징 조회
+     * @param {object} filters { userId, page, size }
+     * @returns {Promise<object>} { totalCount, logs }
+     */
+    async getUserRiskHistory(filters) {
+        const { rows, totalCount } = await RiskLogRepository.findAndCountAllByUserId(filters);
+
+        // API 응답에 맞게 가공
+        const logs = rows.map(log => ({
+            date: log.timestamp.toISOString().split('T')[0],
+            time: log.timestamp.toTimeString().split(' ')[0],
+            type: log.kpi_name,
+            // (★수정★) "조치 내역" 컬럼 제거
+        }));
+
+        return { totalCount, logs };
     }
 
     /**
      * 모든 사용자 조회 (관리자용)
-     * (★수정★) 필터 객체를 Repository로 전달
      * @returns {Promise<Array>}
      */
     async getAllUsers(filters) {
-        // (★수정★) findAll -> findAndCountAllAdmin 호출
         const { rows, totalCount } = await UserRepository.findAndCountAllAdmin(filters);
 
         // 모든 사용자의 비밀번호 필드 제거
         const users = rows.map((user) => {
             delete user.user_pw;
-            // (★수정★) 명세서 응답 형식에 맞게 매핑
             return {
                 userId: user.user_id,
                 loginId: user.login_id,
                 nickname: user.nickname,
                 safetyScore: user.safety_score,
-                // (★수정★) 요청하신 'status' 라인 제거
                 joinDate: user.created_at,
                 role: user.role
             };
@@ -50,14 +87,11 @@ class UserService {
      * @returns {Promise<object>}
      */
     async updateUser(userId, updateData) {
-        // (보안) 업데이트 가능한 필드만 허용
         const allowedUpdates = {
             user_name: updateData.user_name,
             telno: updateData.telno,
-            // (참고) nickname 등 다른 필드도 허용하려면 여기에 추가
         };
 
-        // undefined인 필드는 제거 (DB에 null로 업데이트되는 것 방지)
         Object.keys(allowedUpdates).forEach((key) => {
             if (allowedUpdates[key] === undefined) {
                 delete allowedUpdates[key];
