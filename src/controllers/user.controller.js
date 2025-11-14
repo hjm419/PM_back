@@ -30,7 +30,7 @@ const getMe = async (req, res, next) => {
 const updateMe = async (req, res, next) => {
   try {
     const userId = req.user?.userId; // ⬅️ 토큰에서 "내" ID를 가져옴
-    const updateData = req.body; // ⬅️ { nickname, telno }
+    const updateData = req.body; // ⬅️ { user_name, telno }
 
     if (!userId) {
       return res
@@ -48,11 +48,22 @@ const updateMe = async (req, res, next) => {
 /**
  * GET /api/admin/users
  * 모든 사용자 조회 (관리자 전용)
+ * (★수정★) 페이징 및 검색 파라미터(req.query)를 서비스로 전달
  */
 const getAllUsers = async (req, res, next) => {
   try {
-    const users = await userService.getAllUsers();
-    res.status(200).json(apiResponse.success(users, "All users retrieved"));
+    // (★수정★) v1.3 명세서의 모든 Query Params를 service로 전달
+    const filters = {
+      page: req.query.page,
+      size: req.query.size,
+      searchKeyword: req.query.searchKeyword,
+    };
+
+    const { totalCount, users } = await userService.getAllUsers(filters);
+
+    res
+      .status(200)
+      .json(apiResponse.success({ totalCount, users }, "All users retrieved"));
   } catch (error) {
     next(error);
   }
@@ -64,8 +75,9 @@ const getAllUsers = async (req, res, next) => {
  */
 const getUserById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const user = await userService.getUserById(id);
+    // (★수정★) 1.2에서 수정한 내용
+    const { userId } = req.params;
+    const user = await userService.getUserById(userId);
 
     if (!user) {
       return res.status(404).json(apiResponse.error("User not found", 404));

@@ -18,29 +18,44 @@ class UserService {
 
   /**
    * 모든 사용자 조회 (관리자용)
+   * (★수정★) 필터 객체를 Repository로 전달
    * @returns {Promise<Array>}
    */
-  async getAllUsers() {
-    const users = await UserRepository.findAll();
+  async getAllUsers(filters) {
+    // (★수정★) findAll -> findAndCountAllAdmin 호출
+    const { rows, totalCount } = await UserRepository.findAndCountAllAdmin(
+      filters
+    );
+
     // 모든 사용자의 비밀번호 필드 제거
-    return users.map((user) => {
+    const users = rows.map((user) => {
       delete user.user_pw;
-      return user;
+      // (★수정★) 명세서 응답 형식에 맞게 매핑
+      return {
+        userId: user.user_id,
+        loginId: user.login_id,
+        nickname: user.nickname,
+        safetyScore: user.safety_score,
+        status: user.status || "정상", // (DB에 status 컬럼이 없다면 임시 처리)
+        joinDate: user.created_at,
+      };
     });
+
+    return { totalCount, users };
   }
 
   /**
    * 사용자 정보 업데이트
    * @param {string} userId (t_user의 'user_id' (pk)임)
-   * @param {object} updateData { nickname, telno }
+   * @param {object} updateData { user_name, telno }
    * @returns {Promise<object>}
    */
   async updateUser(userId, updateData) {
     // (보안) 업데이트 가능한 필드만 허용
     const allowedUpdates = {
-      nickname: updateData.nickname,
+      user_name: updateData.user_name,
       telno: updateData.telno,
-      // (참고) 다른 필드도 허용하려면 여기에 추가
+      // (참고) nickname 등 다른 필드도 허용하려면 여기에 추가
     };
 
     // undefined인 필드는 제거 (DB에 null로 업데이트되는 것 방지)
