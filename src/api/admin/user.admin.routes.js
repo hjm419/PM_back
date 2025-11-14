@@ -1,4 +1,4 @@
-// GET /api/admin/users
+// GET /api/v1/admin/users
 const express = require("express");
 const router = express.Router();
 const userController = require("../../controllers/user.controller");

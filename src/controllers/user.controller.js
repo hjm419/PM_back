@@ -88,6 +88,27 @@ const getUserById = async (req, res, next) => {
 };
 
 /**
+ * (★신규★) GET /api/admin/users/:userId/risks
+ * 특정 사용자의 위험 이력 (페이징)
+ */
+const getUserRiskHistory = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+        const filters = {
+            userId: userId,
+            page: req.query.page || 1,
+            size: req.query.size || 5, // 팝업창 기본 5개
+        };
+
+        const { totalCount, logs } = await userService.getUserRiskHistory(filters);
+
+        res.status(200).json(apiResponse.success({ totalCount, logs }, "User risk history retrieved"));
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * PUT /api/v1/users/:id
  * 사용자 정보 업데이트
  */
@@ -113,7 +134,7 @@ const deleteUser = async (req, res, next) => {
         const result = await userService.deleteUser(id);
 
         if (!result) {
-            return res.status(404).json(apiResponse.error("User not found", 404));
+            return res.status(44).json(apiResponse.error("User not found", 404));
         }
 
         res.status(200).json(apiResponse.success({}, "User deleted"));
@@ -147,4 +168,5 @@ module.exports = {
     getMyRides,
     getScoreHistory,
     getScoreStats,
+    getUserRiskHistory, // (★추가★)
 };
