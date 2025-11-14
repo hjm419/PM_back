@@ -36,9 +36,9 @@ class StatsRepository {
             `SELECT
                  (
                      1.0 - (
-                         (SELECT COUNT(log_id)::float FROM t_risk_log WHERE kpi_id = 'kpi_helmet_off')
+                         (SELECT COUNT(log_id)::float FROM t_risk_log WHERE kpi_id = 1)
                              /
-                         (SELECT COUNT(ride_id)::float FROM t_ride WHERE distance > 0)
+                         NULLIF((SELECT COUNT(ride_id)::float FROM t_ride WHERE distance > 0), 0.0)
                          )
                      ) * 100 AS "helmetRate"`
         );
@@ -162,7 +162,7 @@ class StatsRepository {
             const result = await db.query(query, values);
             const countResult = await db.query(
                 countQuery,
-                values.slice(0, valueIndex - 2) // LIMIT, OFFSET 값 제외
+                values.slice(0, values.length - 2) // LIMIT, OFFSET 값 제외
             );
 
             return {
@@ -251,13 +251,13 @@ class StatsRepository {
           WHERE "timestamp" BETWEEN $1 AND $2
           GROUP BY day_label
         ),
-        -- 4. 날짜/월별 헬멧 미착용 횟수 집계 (kpi_helmet_off 가정)
+        -- 4. 날짜/월별 헬멧 미착용 횟수 집계 (kpi_id = 1 가정)
         daily_helmet_off AS (
           SELECT
               to_char("timestamp", $4) AS day_label,
               COUNT(log_id) AS "helmetOffCounts"
           FROM t_risk_log
-          WHERE kpi_id = 'kpi_helmet_off' AND "timestamp" BETWEEN $1 AND $2
+          WHERE kpi_id = 1 AND "timestamp" BETWEEN $1 AND $2
           GROUP BY day_label
         )
         -- 5. 모든 데이터를 날짜/월 기준으로 JOIN
@@ -270,7 +270,7 @@ class StatsRepository {
                 1.0 - (
                     COALESCE(dho."helmetOffCounts", 0)::float 
                     / 
-                    NULLIF(COALESCE(dr."rideCounts", 0)::float, 1.0) -- 0으로 나누기 방지
+                    NULLIF(COALESCE(dr."rideCounts", 0)::float, 0.0) -- 0으로 나누기 방지
                 )
             ) * 100 AS "helmetRate"
         FROM date_series ds
@@ -329,48 +329,54 @@ class StatsRepository {
     }
 
     /**
-     * v1.3 명세서 6번 (GET /api/admin/stats/user-group-comparison)
-     * 사용자 그룹별 비교 (바 차트용)
+     * (★수정★) v1.3 명세서 6번 (GET /api/admin/stats/user-group-comparison)
+     * 사용자 그룹별 비교 (바 차트용) - '횟수' 기준으로 변경
      */
     static async getUserGroupComparison(startDate, endDate) {
         // (TODO: startDate, endDate 필터를 쿼리에 반영)
         try {
-            // 1. 사용자(t_user)를 점수 기준으로 그룹핑
-            // 2. t_ride, t_risk_log를 JOIN하여 1인당 평균 위험 행동 수 계산
             const query = `
-                WITH user_groups AS (
+                -- 1. 사용자별 총 주행 횟수 계산
+                WITH user_ride_counts AS (
                     SELECT
                         user_id,
-                        safety_score,
-                        CASE
-                            WHEN safety_score >= 90 THEN '우수 그룹'
-                            WHEN safety_score >= 70 THEN '보통 그룹'
-                            ELSE '위험 그룹'
-                            END AS "group_name"
-                    FROM t_user
-                    WHERE role = 'user'
+                        COUNT(ride_id) AS ride_count
+                    FROM t_ride
+                    -- WHERE start_time BETWEEN $1 AND $2 -- (필요 시 날짜 필터)
+                    GROUP BY user_id
                 ),
-                     user_risk_counts AS (
-                         SELECT
-                             r.user_id,
-                             COUNT(rl.log_id) AS "totalRiskCount"
-                         FROM t_ride r
-                                  LEFT JOIN t_risk_log rl ON r.ride_id = rl.ride_id
-                         -- WHERE r.start_time BETWEEN $1 AND $2 -- (필요 시 날짜 필터)
-                         GROUP BY r.user_id
-                     )
+                -- 2. 주행 횟수를 기준으로 그룹핑하고, t_user와 조인하여 안전점수 가져오기
+                user_groups AS (
+                    SELECT
+                        u.user_id,
+                        u.safety_score,
+                        COALESCE(urc.ride_count, 0) AS ride_count,
+                        CASE
+                            WHEN COALESCE(urc.ride_count, 0) < 10 THEN '신규 사용자' -- (10회 미만)
+                            WHEN COALESCE(urc.ride_count, 0) < 100 THEN '10회 이상' -- (10회 ~ 99회)
+                            ELSE '100회 이상' -- (100회 이상)
+                        END AS "group_name"
+                    FROM t_user u
+                    LEFT JOIN user_ride_counts urc ON u.user_id = urc.user_id
+                    WHERE u.role = 'user'
+                )
+                -- 3. 그룹별 평균 안전점수 계산
                 SELECT
                     ug.group_name AS "group",
-                    COALESCE(AVG(ug.safety_score), 0) AS "avgSafetyScore",
-                    COALESCE(AVG(urc."totalRiskCount"), 0) AS "avgRiskCount"
+                    COALESCE(AVG(ug.safety_score), 0) AS "avgSafetyScore"
                 FROM user_groups ug
-                         LEFT JOIN user_risk_counts urc ON ug.user_id = urc.user_id
                 GROUP BY ug.group_name
-                ORDER BY "avgSafetyScore" DESC;
+                -- 4. 그룹 순서 정렬
+                ORDER BY
+                    CASE
+                        WHEN ug.group_name = '신규 사용자' THEN 1
+                        WHEN ug.group_name = '10회 이상' THEN 2
+                        ELSE 3
+                    END;
             `;
 
             const result = await db.query(query /*, [startDate, endDate]*/);
-            return result.rows; // [{ group: '우수 그룹', avgSafetyScore: '95.5', avgRiskCount: '1.2' }, ...]
+            return result.rows; // [{ group: '신규 사용자', avgSafetyScore: '75.0' }, ...]
         } catch (error) {
             console.error("DB Error (getUserGroupComparison):", error);
             throw error;
@@ -378,36 +384,19 @@ class StatsRepository {
     }
 
     /**
-     * (★건너뛴 기능★ - 10단계)
+     * (★수정★ - 더미 데이터로 대체됨)
      * v1.3 명세서 6번 (GET /api/admin/stats/top-risk-regions)
      * Top 5 위험 지역 (테이블용)
      */
     static async getTopRiskRegions(startDate, endDate) {
-        // (TODO: startDate, endDate 필터를 쿼리에 반영)
-        // (★가정★: t_risk_log에 'region_name' 컬럼이 존재한다고 가정)
+        // (TODO: t_risk_log에 'region_name' 컬럼이 없어 임시로 비활성화)
         try {
-            const query = `
-        SELECT
-            region_name AS "regionName",
-            COUNT(log_id) AS "count"
-        FROM t_risk_log
-        WHERE region_name IS NOT NULL 
-        -- AND "timestamp" BETWEEN $1 AND $2 -- (필요 시 날짜 필터)
-        GROUP BY "regionName"
-        ORDER BY "count" DESC
-        LIMIT 5;
-      `;
-
-            const result = await db.query(query /*, [startDate, endDate]*/);
-            return result.rows; // [{ regionName: '중앙동', count: '150' }, ...]
+            // const query = ` ... `
+            // const result = await db.query(query /*, [startDate, endDate]*/);
+            return []; // ⬅️ 즉시 빈 배열 반환
         } catch (error) {
-            // (★중요★) 'region_name' 컬럼이 없으면 여기서 500 오류 발생
-            console.error("DB Error (getTopRiskRegions):", error);
-            if (error.code === '42703') { // 'column ... does not exist'
-                console.warn("경고: 't_risk_log' 테이블에 'region_name' 컬럼이 없습니다.");
-                return [];
-            }
-            throw error;
+            console.error("DB Error (getTopRiskRegions - 비활성화됨):", error);
+            return [];
         }
     }
 
@@ -422,28 +411,28 @@ class StatsRepository {
             // (가정: t_risk_kpi에 'weight' 컬럼이 감점 점수)
             // (사용자 요청: 0점 미만 방지)
             const query = `
-        WITH ride_deductions AS (
-          -- 1. 주행(ride_id)별 총 감점(deduction) 계산
-          SELECT
-            rl.ride_id,
-            SUM(k.weight) AS total_deduction
-          FROM t_risk_log rl
-          JOIN t_risk_kpi k ON rl.kpi_id = k.kpi_id
-          GROUP BY rl.ride_id
-        )
-        -- 2. t_ride 테이블의 score 업데이트 (100 - 감점)
-        UPDATE t_ride
-        SET
-          /* (★개선★) 0점 미만으로 내려가지 않도록 GREATEST 사용 */
-          score = GREATEST(0, 100 - COALESCE(rd.total_deduction, 0))
-        FROM ride_deductions rd
-        WHERE t_ride.ride_id = rd.ride_id;
-          
-        -- (참고) 위험 로그가 없는 주행은 100점으로 업데이트
-        UPDATE t_ride
-        SET score = 100
-        WHERE ride_id NOT IN (SELECT ride_id FROM ride_deductions);
-      `;
+                WITH ride_deductions AS (
+                    -- 1. 주행(ride_id)별 총 감점(deduction) 계산
+                    SELECT
+                        rl.ride_id,
+                        SUM(k.weight) AS total_deduction
+                    FROM t_risk_log rl
+                             JOIN t_risk_kpi k ON rl.kpi_id = k.kpi_id
+                    GROUP BY rl.ride_id
+                )
+                -- 2. t_ride 테이블의 score 업데이트 (100 - 감점)
+                UPDATE t_ride
+                SET
+                    /* (★개선★) 0점 미만으로 내려가지 않도록 GREATEST 사용 */
+                    score = GREATEST(0, 100 - COALESCE(rd.total_deduction, 0))
+                    FROM ride_deductions rd
+                WHERE t_ride.ride_id = rd.ride_id;
+
+                -- (참고) 위험 로그가 없는 주행은 100점으로 업데이트
+                UPDATE t_ride
+                SET score = 100
+                WHERE ride_id NOT IN (SELECT ride_id FROM ride_deductions);
+            `;
             await db.query(query);
             return true;
         } catch (error) {
@@ -461,29 +450,29 @@ class StatsRepository {
     static async recalculateUserSafetyScores() {
         try {
             const query = `
-        WITH user_avg_scores AS (
-          -- 1. 사용자(user_id)별 평균 주행 점수 계산
-          SELECT
-            user_id,
-            AVG(score) AS "avgScore"
-          FROM t_ride
-          WHERE score IS NOT NULL
-          GROUP BY user_id
-        )
-        -- 2. t_user 테이블의 safety_score 업데이트
-        UPDATE t_user
-        SET
-          safety_score = uas."avgScore"
-        FROM user_avg_scores uas
-        WHERE t_user.user_id = uas.user_id
-          AND t_user.role = 'user';
-          
-        -- (참고) 주행 기록이 없는 사용자는 100점으로 업데이트
-        UPDATE t_user
-        SET safety_score = 100
-        WHERE role = 'user' 
-          AND user_id NOT IN (SELECT user_id FROM user_avg_scores);
-      `;
+                WITH user_avg_scores AS (
+                    -- 1. 사용자(user_id)별 평균 주행 점수 계산
+                    SELECT
+                        user_id,
+                        AVG(score) AS "avgScore"
+                    FROM t_ride
+                    WHERE score IS NOT NULL
+                    GROUP BY user_id
+                )
+                -- 2. t_user 테이블의 safety_score 업데이트
+                UPDATE t_user
+                SET
+                    safety_score = uas."avgScore"
+                    FROM user_avg_scores uas
+                WHERE t_user.user_id = uas.user_id
+                  AND t_user.role = 'user';
+
+                -- (참고) 주행 기록이 없는 사용자는 100점으로 업데이트
+                UPDATE t_user
+                SET safety_score = 100
+                WHERE role = 'user'
+                  AND user_id NOT IN (SELECT user_id FROM user_avg_scores);
+            `;
             await db.query(query);
             return true;
         } catch (error) {

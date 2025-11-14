@@ -34,8 +34,9 @@ class UserService {
                 loginId: user.login_id,
                 nickname: user.nickname,
                 safetyScore: user.safety_score,
-                status: user.status || '정상', // (DB에 status 컬럼이 없다면 임시 처리)
-                joinDate: user.created_at
+                // (★수정★) 요청하신 'status' 라인 제거
+                joinDate: user.created_at,
+                role: user.role
             };
         });
 

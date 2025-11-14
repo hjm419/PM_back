@@ -1,49 +1,45 @@
+// PM_back/src/models/kpi.model.js
+
 // KPI 모델 (T_RISK_KPI 데이터 스키마)
 
 /**
- * T_RISK_KPI 테이블 스키마 정의
+ * T_RISK_KPI 테이블 스키마 정의 (Repository 기준 수정)
  *
  * CREATE TABLE t_risk_kpi (
- *   kpi_id VARCHAR(50) PRIMARY KEY,
- *   date DATE,
- *   total_rides INT,
- *   total_revenue INT,
- *   total_distance DECIMAL(10, 2),
- *   avg_ride_time INT,
- *   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ * kpi_id VARCHAR(50) PRIMARY KEY, -- 예: 'kpi_helmet_off'
+ * kpi_name VARCHAR(255) NOT NULL, -- 예: '헬멧 미착용'
+ * kpi_desc TEXT,                 -- 예: '헬멧 미착용 감지'
+ * weight INT NOT NULL DEFAULT 0  -- 예: 10 (감점 점수)
  * );
  */
 
 class KPI {
-  /**
-   * KPI 스키마 필드 정의
-   */
-  static schema = {
-    kpi_id: { type: String, primaryKey: true, description: "KPI ID" },
-    date: { type: Date, description: "통계 날짜" },
-    total_rides: { type: Number, description: "총 라이드 수" },
-    total_revenue: { type: Number, description: "총 수익 (원)" },
-    total_distance: { type: Number, description: "총 거리 (km)" },
-    avg_ride_time: { type: Number, description: "평균 라이드 시간 (분)" },
-    created_at: {
-      type: Date,
-      default: "CURRENT_TIMESTAMP",
-      description: "생성 날짜",
-    },
-  };
+    /**
+     * KPI 스키마 필드 정의
+     */
+    static schema = {
+        kpi_id: {
+            type: String,
+            primaryKey: true,
+            description: "KPI ID (예: kpi_helmet_off)",
+        },
+        kpi_name: {
+            type: String,
+            required: true,
+            description: "KPI 이름 (예: 헬멧 미착용)",
+        },
+        kpi_desc: { type: String, description: "KPI 설명" },
+        weight: {
+            type: Number,
+            default: 0,
+            description: "위험 가중치 (감점 점수)",
+        },
+    };
 
-  /**
-   * KPI 컬럼 매핑
-   */
-  static columns = [
-    "kpi_id",
-    "date",
-    "total_rides",
-    "total_revenue",
-    "total_distance",
-    "avg_ride_time",
-    "created_at",
-  ];
+    /**
+     * KPI 컬럼 매핑
+     */
+    static columns = ["kpi_id", "kpi_name", "kpi_desc", "weight"];
 }
 
 module.exports = KPI;

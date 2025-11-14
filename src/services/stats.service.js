@@ -165,7 +165,7 @@ class StatsService {
     }
 
     /**
-     * v1.3 명세서 6번 (GET /api/admin/stats/user-group-comparison)
+     * (★수정★) v1.3 명세서 6번 (GET /api/admin/stats/user-group-comparison)
      * 사용자 그룹별 비교 (바 차트용)
      */
     async getUserGroupComparison(startDate, endDate) {
@@ -174,11 +174,11 @@ class StatsService {
             endDate
         );
 
-        // DB 데이터를 v1.3 명세서 응답 형식으로 변환
+        // (★수정★) DB 데이터를 v1.3 명세서 응답 형식으로 변환 (횟수 기준)
         const groups = dbData.map((row) => ({
             group: row.group,
-            "안전점수": parseFloat(row.avgSafetyScore || 0).toFixed(1),
-            "위험행동빈도": parseFloat(row.avgRiskCount || 0).toFixed(1)
+            // (★수정★) '위험행동빈도' 제거, '평균 안전점수' 키 사용
+            "평균 안전점수": parseFloat(row.avgSafetyScore || 0).toFixed(1)
         }));
 
         return { groups }; // v1.3 명세서 응답: { groups: [...] }

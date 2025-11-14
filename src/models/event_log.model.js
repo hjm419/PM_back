@@ -24,7 +24,7 @@ class EventLog {
         detail: { type: String, description: "상세 내용" },
         // (★수정★) String -> Number
         related_user_id: { type: Number, nullable: true, description: "관련 사용자 ID" },
-        related_pm_id: { type: String, nullable: true, description: "관련 기기 번호" },
+        related_pm_id: { type: Number, nullable: true, description: "관련 기기 번호" }, // ⬅️ String을 Number로 수정
     };
 
     /**

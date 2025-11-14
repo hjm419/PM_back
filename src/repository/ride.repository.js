@@ -89,9 +89,8 @@ class RideRepository {
             const result = await db.query(query, values);
             const countResult = await db.query(
                 countQuery,
-                values.slice(0, valueIndex - 2) // LIMIT, OFFSET 값 제외
+                values.slice(0, values.length - 2) // LIMIT, OFFSET 값 제외
             );
-
             return {
                 rows: result.rows,
                 totalCount: parseInt(countResult.rows[0].count, 10),
@@ -281,7 +280,7 @@ class RideRepository {
                     ST_AsGeoJSON(k.location) AS location
                 FROM t_ride r
                          -- (★핵심 수정★) r.pm_id (VARCHAR)를 BIGINT로 명시적 캐스팅하여 k.pm_id (BIGINT)와 JOIN
-                         JOIN t_kickboard k ON r.pm_id::BIGINT = k.pm_id
+                         JOIN t_kickboard k ON r.pm_id = k.pm_id
                 WHERE r.end_time IS NULL
                 ORDER BY r.start_time DESC;
             `;
