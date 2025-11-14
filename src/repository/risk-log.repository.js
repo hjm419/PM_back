@@ -132,7 +132,7 @@ class RiskLogRepository {
                 FROM t_risk_log rl
                          JOIN t_ride r ON rl.ride_id = r.ride_id
                          JOIN t_risk_kpi k ON rl.kpi_id = k.kpi_id
-                WHERE r.user_id = $1
+                WHERE r.user_id = $1::BIGINT -- (★수정★) 타입을 BIGINT로 캐스팅
                 ORDER BY rl."timestamp" DESC
                     LIMIT $2 OFFSET $3;
             `;
@@ -140,8 +140,8 @@ class RiskLogRepository {
             const countQuery = `
                 SELECT COUNT(rl.log_id)
                 FROM t_risk_log rl
-                JOIN t_ride r ON rl.ride_id = r.ride_id
-                WHERE r.user_id = $1;
+                         JOIN t_ride r ON rl.ride_id = r.ride_id
+                WHERE r.user_id = $1::BIGINT; -- (★수정★) 타입을 BIGINT로 캐스팅
             `;
 
             const result = await db.query(query, [userId, limitNum, offset]);
