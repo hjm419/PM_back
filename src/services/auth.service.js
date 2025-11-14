@@ -30,7 +30,7 @@ class AuthService {
     const responseUser = {
       userId: user.user_id,
       loginId: user.login_id,
-      nickname: user.user_name || user.nickname,
+      nickname: user.nickname,
       role: user.role,
       telno: user.telno,
     };
@@ -70,12 +70,12 @@ class AuthService {
     }
 
     // 2. 사용자 생성
-    // Note: UserRepository.create currently expects { login_id, user_pw, user_name, telno }
+    // Note: UserRepository.create currently expects { login_id, user_pw, nickname, telno }
     const toCreate = {
       login_id: userId,
       user_pw: password,
       nickname: nickname,
-      telNum: telNum,
+      telno: telNum,
     };
 
     const created = await UserRepository.create(toCreate);
@@ -102,7 +102,7 @@ class AuthService {
     return {
       userId: admin.user_id,
       loginId: admin.login_id,
-      nickname: admin.user_name || admin.nickname,
+      nickname: admin.nickname,
       telno: admin.telno,
       role: admin.role,
     };
@@ -111,7 +111,7 @@ class AuthService {
   /**
    * 관리자 정보 수정
    * @param {string} userId
-   * @param {object} updateData { user_name, telno, ... }
+   * @param {object} updateData { telno, ... }
    * @returns {Promise<object>} { userId, loginId, nickname, telno, role }
    */
   async updateAdminInfo(userId, updateData) {
@@ -123,7 +123,7 @@ class AuthService {
     return {
       userId: updated.user_id,
       loginId: updated.login_id,
-      nickname: updated.user_name || updated.nickname,
+      nickname: updated.nickname,
       telno: updated.telno,
       role: updated.role,
     };
