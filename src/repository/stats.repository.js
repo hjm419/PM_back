@@ -8,7 +8,17 @@ const db = require("../config/db");
  */
 class StatsRepository {
 
-    // ( ... 기존 getDashboardKpis ~ recalculateUserSafetyScores 함수들 ... )
+    // ( ... existing getDashboardKpis ... )
+    // ( ... existing getMonthlySafetyScores ... )
+    // ( ... existing getHourlyRisk ... )
+    // ( ... existing findAndCountAllEvents ... )
+    // ( ... existing getSafetyScoreDistribution ... )
+    // ( ... existing getKpiTrends ... )
+    // ( ... existing getRiskTypes ... )
+    // ( ... existing getUserGroupComparison ... )
+    // ( ... existing getTopRiskRegions ... )
+    // ( ... existing recalculateRideScores ... )
+    // ( ... existing recalculateUserSafetyScores ... )
 
     /**
      * v1.3 명세서 6번 (GET /api/admin/stats/kpis)
@@ -482,12 +492,12 @@ class StatsRepository {
     }
 
     /**
-     * (★신규★)
+     * (★수정★)
      * 오늘 가장 많이 운행한 사용자 Top 5 조회 (대시보드용)
-     * @param {number} limit
+     * @param {number} limit (기본값을 5로 변경)
      * @returns {Promise<Array>}
      */
-    static async findTopRidersToday(limit = 2) {
+    static async findTopRidersToday(limit = 5) {
         try {
             const query = `
                 SELECT
