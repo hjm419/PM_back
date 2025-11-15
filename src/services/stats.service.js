@@ -7,17 +7,20 @@ const StatsRepository = require("../repository/stats.repository");
  */
 class StatsService {
     /**
+     * (★수정★)
      * v1.3 명세서 6번 (GET /api/admin/stats/kpis)
-     * 대시보드 KPI 4종 조회
+     * 대시보드 KPI 5종 조회 (날짜 필터 제거)
      */
     async getDashboardKpis(startDate, endDate) {
-        const kpis = await StatsRepository.getDashboardKpis(startDate, endDate);
+        // (★수정★) 파라미터 전달 제거
+        const kpis = await StatsRepository.getDashboardKpis(null, null);
 
         return {
             totalUserCount: kpis.totalUserCount,
             totalRiskCount: kpis.totalRiskCount,
             helmetRate: parseFloat(kpis.helmetRate || 0).toFixed(1), // 소수점 1자리
-            totalDistance: parseFloat(kpis.totalDistance || 0).toFixed(1) // 소수점 1자리
+            totalDistance: parseFloat(kpis.totalDistance || 0).toFixed(1), // 소수점 1자리
+            totalRides: kpis.totalRides, // (★추가★)
         };
     }
 
@@ -26,9 +29,10 @@ class StatsService {
      * 월별 평균 안전 점수 (대시보드 차트용)
      */
     async getMonthlySafetyScores(startDate, endDate) {
+        // (★참고★) 이 차트는 요청대로 '전체 기간 월별'이므로 날짜 필터를 사용하지 않음
         const dbData = await StatsRepository.getMonthlySafetyScores(
-            startDate,
-            endDate
+            null, // startDate
+            null  // endDate
         );
 
         // DB 데이터를 Chart.js 형식으로 변환
@@ -39,11 +43,13 @@ class StatsService {
     }
 
     /**
+     * (★복원★)
      * v1.3 명세서 6번 (GET /api/admin/stats/hourly-risk)
-     * 시간대별 총 위험 행동 (대시보드 차트용)
+     * 시간대별 총 위험 행동 (대시보드 차트용) (날짜 필터 제거)
      */
     async getHourlyRisk(startDate, endDate) {
-        const dbData = await StatsRepository.getHourlyRisk(startDate, endDate);
+        // (★수정★) 파라미터 전달 제거
+        const dbData = await StatsRepository.getHourlyRisk(null, null);
 
         // DB 데이터를 Chart.js 형식으로 변환
         // (0시~23시 배열을 만들고, DB 값으로 채우기)
@@ -83,13 +89,15 @@ class StatsService {
     }
 
     /**
+     * (★복원★)
      * v1.3 명세서 6번 (GET /api/admin/stats/safety-scores)
-     * 안전 점수 분포 (통계 탭 차트용)
+     * 안전 점수 분포 (통계 탭 차트용) (날짜 필터 제거)
      */
     async getSafetyScoreDistribution(startDate, endDate) {
+        // (★수정★) 파라미터 전달 제거
         const dbData = await StatsRepository.getSafetyScoreDistribution(
-            startDate,
-            endDate
+            null,
+            null
         );
 
         // DB 데이터를 명세서 응답 형식으로 변환
@@ -141,14 +149,13 @@ class StatsService {
     }
 
     /**
+     * (★복원★)
      * v1.3 명세서 6번 (GET /api/admin/stats/risk-types)
-     * 위험 행동 유형별 통계 (파이 차트용)
+     * 위험 행동 유형별 통계 (파이 차트용) (날짜 필터 제거)
      */
     async getRiskTypes(startDate, endDate) {
-        const { rows, totalCount } = await StatsRepository.getRiskTypes(
-            startDate,
-            endDate
-        );
+        // (★수정★) 파라미터 전달 제거
+        const { rows, totalCount } = await StatsRepository.getRiskTypes(null, null);
 
         // DB 데이터를 명세서 응답 형식으로 변환 (백분율 계산)
         const data = rows.map((row) => {
@@ -165,14 +172,13 @@ class StatsService {
     }
 
     /**
-     * (★수정★) v1.3 명세서 6번 (GET /api/admin/stats/user-group-comparison)
-     * 사용자 그룹별 비교 (바 차트용)
+     * (★복원★)
+     * v1.3 명세서 6번 (GET /api/admin/stats/user-group-comparison)
+     * 사용자 그룹별 비교 (바 차트용) (날짜 필터 제거)
      */
     async getUserGroupComparison(startDate, endDate) {
-        const dbData = await StatsRepository.getUserGroupComparison(
-            startDate,
-            endDate
-        );
+        // (★수정★) 파라미터 전달 제거
+        const dbData = await StatsRepository.getUserGroupComparison(null, null);
 
         // (★수정★) DB 데이터를 v1.3 명세서 응답 형식으로 변환 (횟수 기준)
         const groups = dbData.map((row) => ({
@@ -240,7 +246,6 @@ class StatsService {
     }
 
     /**
-     * (★수정★)
      * 오늘 가장 많이 운행한 사용자 Top 5 (대시보드용)
      * @returns {Promise<object>}
      */

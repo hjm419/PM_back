@@ -8,40 +8,31 @@ const db = require("../config/db");
  */
 class StatsRepository {
 
-    // ( ... existing getDashboardKpis ... )
-    // ( ... existing getMonthlySafetyScores ... )
-    // ( ... existing getHourlyRisk ... )
-    // ( ... existing findAndCountAllEvents ... )
-    // ( ... existing getSafetyScoreDistribution ... )
-    // ( ... existing getKpiTrends ... )
-    // ( ... existing getRiskTypes ... )
-    // ( ... existing getUserGroupComparison ... )
-    // ( ... existing getTopRiskRegions ... )
-    // ( ... existing recalculateRideScores ... )
-    // ( ... existing recalculateUserSafetyScores ... )
-
     /**
+     * (★수정★)
      * v1.3 명세서 6번 (GET /api/admin/stats/kpis)
-     * 대시보드 KPI 4종 조회
+     * KPI 5종 조회 (날짜 필터 제거, 500 오류 수정)
      */
     static async getDashboardKpis(startDate, endDate) {
-        // 1. 누적 이용자 수 (T_USER)
+
+        // --- (★수정★) 날짜 필터 로직 모두 제거 ---
+
+        // 1. 이용자 수 (T_USER) - (전체 기간)
         const userQuery = db.query(
             `SELECT COUNT(user_id) AS "totalUserCount" FROM t_user WHERE role = 'user'`
         );
 
-        // 2. 누적 발생 위험 행동 수 (T_RISK_LOG)
+        // 2. 발생 위험 행동 수 (T_RISK_LOG) - (전체 기간)
         const riskQuery = db.query(
             `SELECT COUNT(log_id) AS "totalRiskCount" FROM t_risk_log`
         );
 
-        // 3. 누적 운행거리 합계 (T_RIDE)
+        // 3. 운행거리 합계 (T_RIDE) - (전체 기간)
         const distanceQuery = db.query(
             `SELECT SUM(distance) AS "totalDistance" FROM t_ride`
         );
 
-        // 4. 안전모 착용률 (T_RISK_LOG)
-        // (가정: T_RISK_KPI에 'kpi_helmet_off' ID가 있고, T_RIDE에서 총 주행 횟수를 가져옴)
+        // 4. 안전모 착용률 (T_RISK_LOG) - (전체 기간)
         const helmetQuery = db.query(
             `SELECT
                  (
@@ -53,16 +44,22 @@ class StatsRepository {
                      ) * 100 AS "helmetRate"`
         );
 
-        // 4개 쿼리를 동시에 실행
+        // 5. 운행 수 (T_RIDE) - (전체 기간)
+        const rideCountQuery = db.query(
+            `SELECT COUNT(ride_id) AS "totalRides" FROM t_ride`
+        );
+
+        // 5개 쿼리를 동시에 실행
         try {
-            const [userResult, riskResult, distanceResult, helmetResult] =
-                await Promise.all([userQuery, riskQuery, distanceQuery, helmetQuery]);
+            const [userResult, riskResult, distanceResult, helmetResult, rideCountResult] =
+                await Promise.all([userQuery, riskQuery, distanceQuery, helmetQuery, rideCountQuery]);
 
             return {
                 totalUserCount: parseInt(userResult.rows[0]?.totalUserCount || 0),
                 totalRiskCount: parseInt(riskResult.rows[0]?.totalRiskCount || 0),
                 totalDistance: parseFloat(distanceResult.rows[0]?.totalDistance || 0),
                 helmetRate: parseFloat(helmetResult.rows[0]?.helmetRate || 0),
+                totalRides: parseInt(rideCountResult.rows[0]?.totalRides || 0),
             };
         } catch (error) {
             console.error("DB Error (getDashboardKpis):", error);
@@ -76,7 +73,6 @@ class StatsRepository {
      */
     static async getMonthlySafetyScores(startDate, endDate) {
         try {
-            // (참고: T_RIDE의 score는 주행 완료 시점에 계산된다고 가정)
             const query = `
                 SELECT
                     to_char(start_time, 'YYYY-MM') AS "month",
@@ -86,9 +82,8 @@ class StatsRepository {
                 GROUP BY "month"
                 ORDER BY "month";
             `;
-            // (TODO: startDate, endDate 쿼리에 반영)
             const result = await db.query(query);
-            return result.rows; // [{ month: '2025-10', avgScore: 85.5 }, ...]
+            return result.rows;
         } catch (error) {
             console.error("DB Error (getMonthlySafetyScores):", error);
             throw error;
@@ -110,9 +105,8 @@ class StatsRepository {
                 GROUP BY "hour"
                 ORDER BY "hour";
             `;
-            // (TODO: startDate, endDate 쿼리에 반영)
             const result = await db.query(query);
-            return result.rows; // [{ hour: 9, riskCount: 15 }, { hour: 14, riskCount: 5 }]
+            return result.rows;
         } catch (error) {
             console.error("DB Error (getHourlyRisk):", error);
             throw error;
@@ -180,10 +174,8 @@ class StatsRepository {
                 totalCount: parseInt(countResult.rows[0].count, 10),
             };
         } catch (error) {
-            // (★중요★) 't_event_log' 테이블이 존재하지 않으면 여기서 500 오류 발생
             console.error("DB Error (findAndCountAllEvents):", error);
-            // (임시) 테이블이 없을 경우, 빈 배열을 반환하여 서버 다운 방지
-            if (error.code === '42P01') { // 'relation ... does not exist'
+            if (error.code === '42P01') {
                 console.warn("경고: 't_event_log' 테이블이 DB에 존재하지 않습니다.");
                 return { rows: [], totalCount: 0 };
             }
@@ -192,28 +184,25 @@ class StatsRepository {
     }
 
     /**
-     * v1.3 명세서 6번 (GET /api/admin/stats/safety-scores)
-     * 안전 점수 분포 (통계 탭 차트용)
+     * (★복원★) v1.3 명세서 6번 (GET /api/admin/stats/safety-scores)
+     * 안전 점수 분포 (통계 탭 차트용) (날짜 필터 제거)
      */
     static async getSafetyScoreDistribution(startDate, endDate) {
         try {
-            // (참고: T_USER의 safety_score를 구간별로 집계)
-            // (TODO: startDate, endDate 필터는 T_RIDE와 JOIN해야 하므로 이 예제에서는 생략)
-
             const query = `
                 SELECT
-                    SUM(CASE WHEN safety_score >= 90 THEN 1 ELSE 0 END) AS "range_90_100",
-                    SUM(CASE WHEN safety_score >= 80 AND safety_score < 90 THEN 1 ELSE 0 END) AS "range_80_89",
-                    SUM(CASE WHEN safety_score >= 70 AND safety_score < 80 THEN 1 ELSE 0 END) AS "range_70_79",
-                    SUM(CASE WHEN safety_score >= 60 AND safety_score < 70 THEN 1 ELSE 0 END) AS "range_60_69",
-                    SUM(CASE WHEN safety_score < 60 THEN 1 ELSE 0 END) AS "range_0_59",
-                    AVG(safety_score) AS "averageScore",
-                    COUNT(user_id) AS "userCount"
-                FROM t_user
-                WHERE role = 'user';
+                    SUM(CASE WHEN u.safety_score >= 90 THEN 1 ELSE 0 END) AS "range_90_100",
+                    SUM(CASE WHEN u.safety_score >= 80 AND u.safety_score < 90 THEN 1 ELSE 0 END) AS "range_80_89",
+                    SUM(CASE WHEN u.safety_score >= 70 AND u.safety_score < 80 THEN 1 ELSE 0 END) AS "range_70_79",
+                    SUM(CASE WHEN u.safety_score >= 60 AND u.safety_score < 70 THEN 1 ELSE 0 END) AS "range_60_69",
+                    SUM(CASE WHEN u.safety_score < 60 THEN 1 ELSE 0 END) AS "range_0_59",
+                    AVG(u.safety_score) AS "averageScore",
+                    COUNT(DISTINCT u.user_id) AS "userCount"
+                FROM t_user u
+                WHERE u.role = 'user';
             `;
             const result = await db.query(query);
-            return result.rows[0]; // { range_90_100: "10", ..., averageScore: "88.5", userCount: "120" }
+            return result.rows[0];
         } catch (error) {
             console.error("DB Error (getSafetyScoreDistribution):", error);
             throw error;
@@ -227,8 +216,6 @@ class StatsRepository {
      * @param {string} interval ('daily' or 'monthly')
      */
     static async getKpiTrends(startDate, endDate, interval) {
-        // (참고: 이 쿼리는 PostgreSQL의 generate_series를 사용합니다)
-        // (interval이 'monthly'이면 'YYYY-MM', 'daily'이면 'YYYY-MM-DD')
         const dateFormat = interval === 'monthly' ? 'YYYY-MM' : 'YYYY-MM-DD';
         const intervalUnit = interval === 'monthly' ? '1 month' : '1 day';
 
@@ -275,7 +262,6 @@ class StatsRepository {
             to_char(ds.day, $4) AS "label",
             COALESCE(dr."rideCounts", 0)::int AS "rideCounts",
             COALESCE(drs."riskCounts", 0)::int AS "riskCounts",
-            -- 헬멧 착용률: (1 - (미착용 / 총 주행)) * 100
             (
                 1.0 - (
                     COALESCE(dho."helmetOffCounts", 0)::float 
@@ -298,11 +284,11 @@ class StatsRepository {
     }
 
     /**
-     * v1.3 명세서 6번 (GET /api/admin/stats/risk-types)
-     * 위험 행동 유형별 통계 (파이 차트용)
+     * (★복원★) v1.3 명세서 6번 (GET /api/admin/stats/risk-types)
+     * 위험 행동 유형별 통계 (파이 차트용) (날짜 필터 제거 - 원본 복원)
      */
     static async getRiskTypes(startDate, endDate) {
-        // (TODO: startDate, endDate 필터를 쿼리에 반영)
+        // (날짜 필터 제거됨)
         try {
             // 1. kpi_id별 건수 집계 (kpi_name을 위해 T_RISK_KPI와 JOIN)
             const query = `
@@ -311,7 +297,7 @@ class StatsRepository {
                     COUNT(rl.log_id) AS "count"
                 FROM t_risk_log rl
                          JOIN t_risk_kpi k ON rl.kpi_id = k.kpi_id
-                -- WHERE rl."timestamp" BETWEEN $1 AND $2 -- (필요 시 날짜 필터)
+                /* (날짜 필터 제거됨) */
                 GROUP BY k.kpi_name
                 ORDER BY "count" DESC;
             `;
@@ -320,12 +306,12 @@ class StatsRepository {
             const totalCountQuery = `
                 SELECT COUNT(log_id) AS "totalCount"
                 FROM t_risk_log
-                -- WHERE "timestamp" BETWEEN $1 AND $2 -- (필요 시 날짜 필터)
+                /* (날짜 필터 제거됨) */
             `;
 
             const [result, totalResult] = await Promise.all([
-                db.query(query /*, [startDate, endDate]*/),
-                db.query(totalCountQuery /*, [startDate, endDate]*/),
+                db.query(query),
+                db.query(totalCountQuery),
             ]);
 
             return {
@@ -339,11 +325,11 @@ class StatsRepository {
     }
 
     /**
-     * (★수정★) v1.3 명세서 6번 (GET /api/admin/stats/user-group-comparison)
-     * 사용자 그룹별 비교 (바 차트용) - '횟수' 기준으로 변경
+     * (★복원★) v1.3 명세서 6번 (GET /api/admin/stats/user-group-comparison)
+     * 사용자 그룹별 비교 (바 차트용) (날짜 필터 제거 - 원본 복원)
      */
     static async getUserGroupComparison(startDate, endDate) {
-        // (TODO: startDate, endDate 필터를 쿼리에 반영)
+        // (날짜 필터 제거됨)
         try {
             const query = `
                 -- 1. 사용자별 총 주행 횟수 계산
@@ -352,7 +338,7 @@ class StatsRepository {
                         user_id,
                         COUNT(ride_id) AS ride_count
                     FROM t_ride
-                    -- WHERE start_time BETWEEN $1 AND $2 -- (필요 시 날짜 필터)
+                    /* (날짜 필터 제거됨) */
                     GROUP BY user_id
                 ),
                 -- 2. 주행 횟수를 기준으로 그룹핑하고, t_user와 조인하여 안전점수 가져오기
@@ -385,8 +371,8 @@ class StatsRepository {
                     END;
             `;
 
-            const result = await db.query(query /*, [startDate, endDate]*/);
-            return result.rows; // [{ group: '신규 사용자', avgSafetyScore: '75.0' }, ...]
+            const result = await db.query(query);
+            return result.rows;
         } catch (error) {
             console.error("DB Error (getUserGroupComparison):", error);
             throw error;
@@ -492,9 +478,9 @@ class StatsRepository {
     }
 
     /**
-     * (★수정★)
+     * (★신규★)
      * 오늘 가장 많이 운행한 사용자 Top 5 조회 (대시보드용)
-     * @param {number} limit (기본값을 5로 변경)
+     * @param {number} limit
      * @returns {Promise<Array>}
      */
     static async findTopRidersToday(limit = 5) {
