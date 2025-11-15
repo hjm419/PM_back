@@ -240,12 +240,13 @@ class StatsService {
     }
 
     /**
-     * (★신규★)
+     * (★수정★)
      * 오늘 가장 많이 운행한 사용자 Top 5 (대시보드용)
      * @returns {Promise<object>}
      */
     async getTopRidersToday() {
-        const users = await StatsRepository.findTopRidersToday(2); // (UI에 맞게 2명)
+        // (★수정★) 2 -> 5
+        const users = await StatsRepository.findTopRidersToday(5);
         return users.map(user => ({
             userId: user.user_id,
             nickname: user.nickname,
