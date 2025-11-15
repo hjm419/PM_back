@@ -143,10 +143,25 @@ const deleteUser = async (req, res, next) => {
     }
 };
 
-const getMyRides = async (req, res, next) => {
-    // TODO: 내 주행내역 조회 구현
-    res.status(200).json({ message: "getMyRides not implemented" });
-};
+    const getMyRides = async (req, res, next) => {
+        try {
+            // 1. 토큰에서 내 ID 꺼내기
+            const userId = req.user?.userId;
+
+            if (!userId) {
+                return res.status(401).json(apiResponse.error("User not authenticated", 401));
+            }
+
+            // 2. 서비스 호출해서 데이터 가져오기
+            const rides = await userService.getMyRides(userId);
+
+            // 3. 성공 응답 보내기
+            res.status(200).json(apiResponse.success(rides, "My rides retrieved"));
+        } catch (error) {
+            next(error);
+        }
+    };
+
 
 const getScoreHistory = async (req, res, next) => {
     // TODO: 점수 변동 내역 구현

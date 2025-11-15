@@ -1,6 +1,7 @@
 // 사용자 비즈니스 로직
 const UserRepository = require("../repository/user.repository");
 const RiskLogRepository = require("../repository/risk-log.repository"); // (★추가★)
+const RideRepository = require("../repository/ride.repository");
 
 class UserService {
     /**
@@ -118,6 +119,26 @@ class UserService {
      */
     async deleteUser(userId) {
         return await UserRepository.delete(userId);
+    }
+
+    /**
+     * 내 주행 이력 조회 (앱 HistoryScreen용)
+     */
+    async getMyRides(userId) {
+        // 1. DB에서 해당 유저의 모든 주행 기록 조회
+        const rides = await RideRepository.findByUserId(userId);
+
+        // 2. 프론트엔드가 쓰기 편하게 데이터 가공 (null 처리 및 포맷팅)
+        return rides.map(ride => ({
+            ride_id: ride.ride_id,
+            pm_id: ride.pm_id,
+            start_time: ride.start_time,
+            // DB에 저장된 거리(km)가 없으면 0으로 처리, 소수점 2자리 문자열로 변환
+            distance: parseFloat(ride.distance || 0).toFixed(1),
+            duration: ride.duration || 0, // 분 단위
+            fare: ride.fare || 0,         // 금액
+            score: ride.score || 0        // 점수
+        }));
     }
 }
 
