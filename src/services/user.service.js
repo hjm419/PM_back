@@ -154,25 +154,6 @@ class UserService {
             score: ride.score || 0        // 점수
         }));
     }
-
-    /**
-     * (신규) 앱 내 정보 화면용 상세 조회
-     */
-    async getUserProfile(userId) {
-        const user = await UserRepository.findById(userId);
-        if (!user) return null;
-
-        const stats = await UserRepository.getUserProfileStats(userId);
-
-        delete user.user_pw;
-
-        return {
-            ...user,
-            total_rides: parseInt(stats.total_rides || 0),
-            total_distance: parseFloat(stats.total_distance || 0).toFixed(1),
-            total_duration: parseInt(stats.total_duration || 0),
-        };
-    }
 }
 
 module.exports = new UserService();
