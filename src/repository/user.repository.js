@@ -170,8 +170,7 @@ class UserRepository {
     }
 
     /**
-     * (★신규★) 특정 사용자의 누적 통계 조회 (상세 팝업용)
-     * (이 함수가 누락되어 팝업창 데이터가 비어있었습니다)
+     * 특정 사용자의 누적 통계 조회 (상세 팝업용)
      * @param {string} userId
      * @returns {Promise<object|null>} { total_rides, total_payment }
      */
@@ -188,6 +187,30 @@ class UserRepository {
             return result.rows[0] || { total_rides: 0, total_payment: 0 };
         } catch (error) {
             console.error("DB Error (getUserStats):", error);
+            throw error;
+        }
+    }
+
+    /**
+     * (★신규★)
+     * 안전 점수 낮은 사용자 Top 5 조회 (대시보드용)
+     * @param {number} limit
+     * @returns {Promise<Array>}
+     */
+    static async findTopRiskUsers(limit = 5) {
+        try {
+            const query = `
+                SELECT user_id, nickname, safety_score
+                FROM t_user
+                WHERE role = 'user'
+                ORDER BY safety_score ASC
+                    LIMIT $1;
+            `;
+            const result = await db.query(query, [limit]);
+            return result.rows;
+        } catch (error)
+        {
+            console.error("DB Error (findTopRiskUsers):", error);
             throw error;
         }
     }

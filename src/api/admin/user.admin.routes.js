@@ -6,6 +6,10 @@ const userController = require("../../controllers/user.controller");
 // 회원 목록 조회
 router.get("/", userController.getAllUsers);
 
+// (★신규★) 대시보드용 Top 5 위험 사용자
+// (주의: /:userId 보다 위에 있어야 /top-risk를 ID로 인식하지 않습니다)
+router.get("/top-risk", userController.getTopRiskUsers);
+
 // (★신규★) 특정 회원 위험 이력 조회 (페이징)
 router.get("/:userId/risks", userController.getUserRiskHistory);
 

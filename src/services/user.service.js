@@ -41,7 +41,6 @@ class UserService {
 
     /**
      * (★신규★) 사용자의 위험 이력 페이징 조회
-     * (이 함수가 누락되어 500 오류가 발생했습니다)
      * @param {object} filters { userId, page, size }
      * @returns {Promise<object>} { totalCount, logs }
      */
@@ -80,6 +79,21 @@ class UserService {
         });
 
         return { totalCount, users };
+    }
+
+    /**
+     * (★신규★)
+     * 안전 점수 낮은 사용자 Top 5 조회 (대시보드용)
+     * @returns {Promise<Array>}
+     */
+    async getTopRiskUsers() {
+        const users = await UserRepository.findTopRiskUsers(5);
+        return users.map(user => ({
+            // DB 컬럼명(snake_case)을 프론트엔드(camelCase)로 매핑
+            userId: user.user_id,
+            nickname: user.nickname,
+            safetyScore: user.safety_score
+        }));
     }
 
     /**
