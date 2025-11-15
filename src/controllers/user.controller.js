@@ -7,20 +7,20 @@ const apiResponse = require("../utils/apiResponse");
  * 현재 사용자 정보 조회
  */
 const getMe = async (req, res, next) => {
-    try {
-        const userId = req.user?.userId;
+  try {
+    const userId = req.user?.userId;
 
-        if (!userId) {
-            return res
-                .status(401)
-                .json(apiResponse.error("User not authenticated", 401));
-        }
-
-        const user = await userService.getUserById(userId);
-        res.status(200).json(apiResponse.success(user, "User info retrieved"));
-    } catch (error) {
-        next(error);
+    if (!userId) {
+      return res
+        .status(401)
+        .json(apiResponse.error("User not authenticated", 401));
     }
+
+    const user = await userService.getUserById(userId);
+    res.status(200).json(apiResponse.success(user, "User info retrieved"));
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -28,21 +28,21 @@ const getMe = async (req, res, next) => {
  * 현재 사용자 정보 업데이트
  */
 const updateMe = async (req, res, next) => {
-    try {
-        const userId = req.user?.userId; // ⬅️ 토큰에서 "내" ID를 가져옴
-        const updateData = req.body; // ⬅️ { user_name, telno }
+  try {
+    const userId = req.user?.userId; // ⬅️ 토큰에서 "내" ID를 가져옴
+    const updateData = req.body; // ⬅️ { user_name, telno }
 
-        if (!userId) {
-            return res
-                .status(401)
-                .json(apiResponse.error("User not authenticated", 401));
-        }
-
-        const updatedUser = await userService.updateUser(userId, updateData);
-        res.status(200).json(apiResponse.success(updatedUser, "User updated"));
-    } catch (error) {
-        next(error);
+    if (!userId) {
+      return res
+        .status(401)
+        .json(apiResponse.error("User not authenticated", 401));
     }
+
+    const updatedUser = await userService.updateUser(userId, updateData);
+    res.status(200).json(apiResponse.success(updatedUser, "User updated"));
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -51,20 +51,22 @@ const updateMe = async (req, res, next) => {
  * (★수정★) 페이징 및 검색 파라미터(req.query)를 서비스로 전달
  */
 const getAllUsers = async (req, res, next) => {
-    try {
-        // (★수정★) v1.3 명세서의 모든 Query Params를 service로 전달
-        const filters = {
-            page: req.query.page,
-            size: req.query.size,
-            searchKeyword: req.query.searchKeyword,
-        };
+  try {
+    // (★수정★) v1.3 명세서의 모든 Query Params를 service로 전달
+    const filters = {
+      page: req.query.page,
+      size: req.query.size,
+      searchKeyword: req.query.searchKeyword,
+    };
 
-        const { totalCount, users } = await userService.getAllUsers(filters);
+    const { totalCount, users } = await userService.getAllUsers(filters);
 
-        res.status(200).json(apiResponse.success({ totalCount, users }, "All users retrieved"));
-    } catch (error) {
-        next(error);
-    }
+    res
+      .status(200)
+      .json(apiResponse.success({ totalCount, users }, "All users retrieved"));
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -72,19 +74,19 @@ const getAllUsers = async (req, res, next) => {
  * 특정 사용자 조회
  */
 const getUserById = async (req, res, next) => {
-    try {
-        // (★수정★) 1.2에서 수정한 내용
-        const { userId } = req.params;
-        const user = await userService.getUserById(userId);
+  try {
+    // (★수정★) 1.2에서 수정한 내용
+    const { userId } = req.params;
+    const user = await userService.getUserById(userId);
 
-        if (!user) {
-            return res.status(404).json(apiResponse.error("User not found", 404));
-        }
-
-        res.status(200).json(apiResponse.success(user, "User retrieved"));
-    } catch (error) {
-        next(error);
+    if (!user) {
+      return res.status(404).json(apiResponse.error("User not found", 404));
     }
+
+    res.status(200).json(apiResponse.success(user, "User retrieved"));
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -92,20 +94,24 @@ const getUserById = async (req, res, next) => {
  * 특정 사용자의 위험 이력 (페이징)
  */
 const getUserRiskHistory = async (req, res, next) => {
-    try {
-        const { userId } = req.params;
-        const filters = {
-            userId: userId,
-            page: req.query.page || 1,
-            size: req.query.size || 5, // 팝업창 기본 5개
-        };
+  try {
+    const { userId } = req.params;
+    const filters = {
+      userId: userId,
+      page: req.query.page || 1,
+      size: req.query.size || 5, // 팝업창 기본 5개
+    };
 
-        const { totalCount, logs } = await userService.getUserRiskHistory(filters);
+    const { totalCount, logs } = await userService.getUserRiskHistory(filters);
 
-        res.status(200).json(apiResponse.success({ totalCount, logs }, "User risk history retrieved"));
-    } catch (error) {
-        next(error);
-    }
+    res
+      .status(200)
+      .json(
+        apiResponse.success({ totalCount, logs }, "User risk history retrieved")
+      );
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -113,15 +119,15 @@ const getUserRiskHistory = async (req, res, next) => {
  * 사용자 정보 업데이트
  */
 const updateUser = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const updateData = req.body;
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
 
-        const user = await userService.updateUser(id, updateData);
-        res.status(200).json(apiResponse.success(user, "User updated"));
-    } catch (error) {
-        next(error);
-    }
+    const user = await userService.updateUser(id, updateData);
+    res.status(200).json(apiResponse.success(user, "User updated"));
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -129,44 +135,96 @@ const updateUser = async (req, res, next) => {
  * 사용자 삭제
  */
 const deleteUser = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const result = await userService.deleteUser(id);
+  try {
+    const { id } = req.params;
+    const result = await userService.deleteUser(id);
 
-        if (!result) {
-            return res.status(44).json(apiResponse.error("User not found", 404));
-        }
-
-        res.status(200).json(apiResponse.success({}, "User deleted"));
-    } catch (error) {
-        next(error);
+    if (!result) {
+      return res.status(44).json(apiResponse.error("User not found", 404));
     }
+
+    res.status(200).json(apiResponse.success({}, "User deleted"));
+  } catch (error) {
+    next(error);
+  }
 };
 
 const getMyRides = async (req, res, next) => {
-    // TODO: 내 주행내역 조회 구현
-    res.status(200).json({ message: "getMyRides not implemented" });
+  try {
+    const userId = req.user?.userId;
+    const { limit = 10 } = req.query;
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json(apiResponse.error("User not authenticated", 401));
+    }
+
+    const history =
+      await require("../services/ride.service").getUserRideHistory(
+        userId,
+        parseInt(limit)
+      );
+    res
+      .status(200)
+      .json(apiResponse.success(history, "Ride history retrieved"));
+  } catch (error) {
+    next(error);
+  }
 };
 
 const getScoreHistory = async (req, res, next) => {
-    // TODO: 점수 변동 내역 구현
-    res.status(200).json({ message: "getScoreHistory not implemented" });
+  try {
+    const userId = req.user?.userId;
+    const page = req.query.page || 1;
+    const size = req.query.size || 10;
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json(apiResponse.error("User not authenticated", 401));
+    }
+
+    const { totalCount, logs } = await userService.getUserRiskHistory({
+      userId,
+      page,
+      size,
+    });
+    res
+      .status(200)
+      .json(
+        apiResponse.success({ totalCount, logs }, "Score history retrieved")
+      );
+  } catch (error) {
+    next(error);
+  }
 };
 
 const getScoreStats = async (req, res, next) => {
-    // TODO: 감점 요인 통계 구현
-    res.status(200).json({ message: "getScoreStats not implemented" });
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res
+        .status(401)
+        .json(apiResponse.error("User not authenticated", 401));
+    }
+
+    const stats = await userService.getUserScoreStats(userId);
+    res.status(200).json(apiResponse.success(stats, "Score stats retrieved"));
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = {
-    getMe,
-    updateMe,
-    getAllUsers,
-    getUserById,
-    updateUser,
-    deleteUser,
-    getMyRides,
-    getScoreHistory,
-    getScoreStats,
-    getUserRiskHistory, // (★추가★)
+  getMe,
+  updateMe,
+  getAllUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+  getMyRides,
+  getScoreHistory,
+  getScoreStats,
+  getUserRiskHistory, // (★추가★)
 };
