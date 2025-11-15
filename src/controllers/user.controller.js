@@ -216,6 +216,22 @@ const getScoreStats = async (req, res, next) => {
   }
 };
 
+/**
+ * (★신규★) GET /api/admin/users/top-risk
+ * 안전 점수가 낮은 사용자 Top N 조회 (관리자 대시보드용)
+ */
+const getTopRiskUsers = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 5;
+    const users = await userService.getTopRiskUsers(limit);
+    res
+      .status(200)
+      .json(apiResponse.success(users, "Top risk users retrieved"));
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getMe,
   updateMe,
@@ -226,5 +242,6 @@ module.exports = {
   getMyRides,
   getScoreHistory,
   getScoreStats,
+  getTopRiskUsers,
   getUserRiskHistory, // (★추가★)
 };
