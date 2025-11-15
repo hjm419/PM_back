@@ -47,5 +47,8 @@ router.get("/regional-scores", statsController.getRegionalScores);
 // 12. 사용자 그룹별 비교 (통계) (GET /api/admin/stats/user-group-comparison)
 router.get("/user-group-comparison", statsController.getUserGroupComparison);
 
+// (★신규★) 13. 오늘 가장 많이 운행한 사용자 (대시보드)
+router.get("/top-riders-today", statsController.getTopRidersToday);
+
 
 module.exports = router;

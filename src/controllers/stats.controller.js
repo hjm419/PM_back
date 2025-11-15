@@ -173,6 +173,16 @@ const getUserGroupComparison = async (req, res, next) => {
     }
 };
 
+// (★신규★) GET /api/admin/stats/top-riders-today
+const getTopRidersToday = async (req, res, next) => {
+    try {
+        const data = await statsService.getTopRidersToday();
+        res.status(200).json(apiResponse.success(data, "Today's top riders retrieved"));
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 module.exports = {
     getRiskLogs,
@@ -186,5 +196,6 @@ module.exports = {
     getHourlyRisk,
     getMonthlySafetyScores,
     getRegionalScores, // (TODO)
-    getUserGroupComparison
+    getUserGroupComparison,
+    getTopRidersToday // (★추가★)
 };
