@@ -176,6 +176,23 @@ const deleteUser = async (req, res, next) => {
         }
     };
 
+/**
+ * (신규) GET /api/app/users/me/profile
+ * 내 정보 상세 조회 (통계 포함)
+ */
+const getUserProfile = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json(apiResponse.error("User not authenticated", 401));
+        }
+
+        const userProfile = await userService.getUserProfile(userId);
+        res.status(200).json(apiResponse.success(userProfile, "User profile retrieved"));
+    } catch (error) {
+        next(error);
+    }
+};
 
 const getScoreHistory = async (req, res, next) => {
     // TODO: 점수 변동 내역 구현
@@ -195,6 +212,7 @@ module.exports = {
     updateUser,
     deleteUser,
     getMyRides,
+    getUserProfile,
     getScoreHistory,
     getScoreStats,
     getUserRiskHistory,

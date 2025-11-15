@@ -214,6 +214,31 @@ class UserRepository {
             throw error;
         }
     }
+
+    /**
+     * (★신규 추가★) 앱 전용: 거리, 시간까지 포함한 통계 조회
+     */
+    static async getUserProfileStats(userId) {
+        try {
+            const query = `
+                SELECT
+                    COUNT(ride_id) AS "total_rides",
+                    COALESCE(SUM(distance), 0) AS "total_distance",
+                    COALESCE(SUM(duration), 0) AS "total_duration"
+                FROM t_ride
+                WHERE user_id = $1
+            `;
+            const result = await db.query(query, [userId]);
+            return result.rows[0] || {
+                total_rides: 0,
+                total_distance: 0,
+                total_duration: 0
+            };
+        } catch (error) {
+            console.error("DB Error (getUserProfileStats):", error);
+            throw error;
+        }
+    }
 }
 
 module.exports = UserRepository;
