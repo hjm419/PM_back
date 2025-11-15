@@ -8,7 +8,7 @@ const db = require("../config/db");
  */
 class StatsRepository {
 
-    // ( ... 1, 3, 5, 6, 7, 8, 9단계에서 추가한 함수들 ... )
+    // ( ... 기존 getDashboardKpis ~ recalculateUserSafetyScores 함수들 ... )
 
     /**
      * v1.3 명세서 6번 (GET /api/admin/stats/kpis)
@@ -477,6 +477,36 @@ class StatsRepository {
             return true;
         } catch (error) {
             console.error("DB Error (recalculateUserSafetyScores):", error);
+            throw error;
+        }
+    }
+
+    /**
+     * (★신규★)
+     * 오늘 가장 많이 운행한 사용자 Top 5 조회 (대시보드용)
+     * @param {number} limit
+     * @returns {Promise<Array>}
+     */
+    static async findTopRidersToday(limit = 2) {
+        try {
+            const query = `
+                SELECT
+                    r.user_id,
+                    u.nickname,
+                    COUNT(r.ride_id) AS "rideCount"
+                FROM t_ride r
+                         JOIN t_user u ON r.user_id = u.user_id
+                WHERE r.start_time >= CURRENT_DATE
+                  AND r.start_time < CURRENT_DATE + INTERVAL '1 day'
+                  AND u.role = 'user'
+                GROUP BY r.user_id, u.nickname
+                ORDER BY "rideCount" DESC
+                    LIMIT $1;
+            `;
+            const result = await db.query(query, [limit]);
+            return result.rows; // [{ user_id, nickname, rideCount }]
+        } catch (error) {
+            console.error("DB Error (findTopRidersToday):", error);
             throw error;
         }
     }

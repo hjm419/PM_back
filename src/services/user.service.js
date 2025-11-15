@@ -1,6 +1,7 @@
 // 사용자 비즈니스 로직
 const UserRepository = require("../repository/user.repository");
 const RiskLogRepository = require("../repository/risk-log.repository"); // (★추가★)
+const RideRepository = require("../repository/ride.repository");
 
 class UserService {
   /**

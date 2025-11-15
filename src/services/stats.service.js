@@ -238,6 +238,20 @@ class StatsService {
         // (TODO: 'region_name' 컬럼이 필요하여 구현 건너뜀)
         return { regions: [] };
     }
+
+    /**
+     * (★신규★)
+     * 오늘 가장 많이 운행한 사용자 Top 5 (대시보드용)
+     * @returns {Promise<object>}
+     */
+    async getTopRidersToday() {
+        const users = await StatsRepository.findTopRidersToday(2); // (UI에 맞게 2명)
+        return users.map(user => ({
+            userId: user.user_id,
+            nickname: user.nickname,
+            rideCount: parseInt(user.rideCount || 0)
+        }));
+    }
 }
 
 module.exports = new StatsService();
