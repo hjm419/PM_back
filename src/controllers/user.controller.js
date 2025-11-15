@@ -157,29 +157,41 @@ const deleteUser = async (req, res, next) => {
     }
 };
 
-    const getMyRides = async (req, res, next) => {
-        try {
-            // 1. 토큰에서 내 ID 꺼내기
-            const userId = req.user?.userId;
+const getMyRides = async (req, res, next) => {
+    try {
+        // 1. 토큰에서 내 ID 꺼내기
+        const userId = req.user?.userId;
 
-            if (!userId) {
-                return res.status(401).json(apiResponse.error("User not authenticated", 401));
-            }
-
-            // 2. 서비스 호출해서 데이터 가져오기
-            const rides = await userService.getMyRides(userId);
-
-            // 3. 성공 응답 보내기
-            res.status(200).json(apiResponse.success(rides, "My rides retrieved"));
-        } catch (error) {
-            next(error);
+        if (!userId) {
+            return res.status(401).json(apiResponse.error("User not authenticated", 401));
         }
-    };
 
+        // 2. 서비스 호출해서 데이터 가져오기
+        const rides = await userService.getMyRides(userId);
 
-const getScoreHistory = async (req, res, next) => {
-    // TODO: 점수 변동 내역 구현
-    res.status(200).json({ message: "getScoreHistory not implemented" });
+        // 3. 성공 응답 보내기
+        res.status(200).json(apiResponse.success(rides, "My rides retrieved"));
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * (신규) GET /api/app/users/me/profile
+ * 내 정보 상세 조회 (통계 포함)
+ */
+const getUserProfile = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json(apiResponse.error("User not authenticated", 401));
+        }
+
+        const userProfile = await userService.getUserProfile(userId);
+        res.status(200).json(apiResponse.success(userProfile, "User profile retrieved"));
+    } catch (error) {
+        next(error);
+    }
 };
 
 const getScoreStats = async (req, res, next) => {
@@ -192,10 +204,10 @@ module.exports = {
     updateMe,
     getAllUsers,
     getUserById,
+    getUserProfile,
     updateUser,
     deleteUser,
     getMyRides,
-    getScoreHistory,
     getScoreStats,
     getUserRiskHistory,
     getTopRiskUsers, // (★추가★)
