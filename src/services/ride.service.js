@@ -173,7 +173,7 @@ class RideService {
     }
 
     /**
-     * (★신규★) 현재 운행 중인 라이드 목록 조회 (RealtimeView.vue 전용)
+     * (★수정★) 현재 운행 중인 라이드 목록 조회 (RealtimeView.vue 전용)
      * @returns {Promise<{rides: Array}>}
      */
     async getActiveRidesForAdmin() {
@@ -187,7 +187,8 @@ class RideService {
             startTime: ride.start_time,
             // (★수정★) Service에서 Alias를 사용해 location/battery를 프론트엔드 형식으로 맞춤
             location: parseGeoJSON(ride.location),
-            battery: ride.battery
+            battery: ride.battery,
+            safetyScore: ride.safety_score || 100 // (★추가★)
         }));
         return { rides: mappedRides };
     }
