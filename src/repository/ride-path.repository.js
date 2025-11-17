@@ -30,9 +30,13 @@ class RidePathRepository {
   static async create(data) {
     try {
       const { ride_id, path_data } = data;
+
+      // [수정] 배열/객체를 JSON 문자열로 명시적으로 변환해야 DB 에러가 발생하지 않습니다.
+      const pathDataJson = JSON.stringify(path_data);
+
       const result = await db.query(
         "INSERT INTO t_ride_path (ride_id, path_data) VALUES ($1, $2) RETURNING *",
-        [ride_id, path_data]
+        [ride_id, pathDataJson]
       );
       return result.rows[0];
     } catch (error) {
