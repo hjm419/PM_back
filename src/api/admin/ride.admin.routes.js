@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const rideController = require("../../controllers/ride.controller");
 
-// (★신규★) 실시간 관제용 (운행 중인 목록)
-// (참고: /rides 보다 위에 있어야 /:rideId/risks 보다 우선순위를 가집니다)
+// (★중요★) 실시간 관제용 (운행 중인 목록)
+// (이 부분이 404 오류를 해결합니다)
 router.get("/active", rideController.getActiveRides);
 
 // 주행 기록 조회 (RideHistoryTab용)

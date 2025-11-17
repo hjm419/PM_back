@@ -21,6 +21,21 @@ class RideService {
       lng: startLocation.longitude || startLocation.lng,
     };
 
+        const ride = await RideRepository.create({
+            user_id: userId,
+            pm_id: kickboardId,
+            start_loc: locationObj, // (★수정★) DB 컬럼명
+            start_time: new Date(),
+            is_helmet: startLocation.is_helmet || false // (★수정★) 헬멧 정보
+        });
+
+        // (★신규★) 운행 시작 시, t_kickboard의 상태와 위치도 함께 갱신
+        if (ride.pm_id) {
+            await KickboardRepository.update(ride.pm_id, {
+                pm_status: 'in_use', // (상태: 'in_use'로 변경)
+                location: locationObj // (위치: 'start_loc'으로 변경)
+            });
+        }
     const ride = await RideRepository.create({
       user_id: userId,
       pm_id: kickboardId,
@@ -171,6 +186,17 @@ class RideService {
     const distanceFare = finalDistance * 100;
     const finalFare = Math.floor(baseFare + timeFare + distanceFare);
 
+        // (★신규★) DB에 최종 요금만 다시 업데이트
+        await RideRepository.update(rideId, { fare: finalFare });
+
+        // (★핵심 수정★)
+        // 운행 종료 시, t_kickboard의 상태와 위치도 함께 갱신
+        if (pmId) {
+            await KickboardRepository.update(pmId, {
+                pm_status: 'available', // (상태: 'available'로 변경)
+                location: locationObj   // (위치: 'end_loc'으로 변경)
+            });
+        }
     // 9. Ride 테이블 최종 확정
     await RideRepository.update(rideId, {
       fare: finalFare,
@@ -275,12 +301,32 @@ class RideService {
     return { pathData: pathData }; // 명세서 형식 { pathData: [...] }
   }
 
+    /**
+     * (★수정★) 현재 운행 중인 라이드 목록 조회 (RealtimeView.vue 전용)
+     * @returns {Promise<{rides: Array}>}
+     */
+    async getActiveRidesForAdmin() {
+        const rides = await RideRepository.findActiveRidesAdmin();
   /**
    * (★신규★) 현재 운행 중인 라이드 목록 조회 (RealtimeView.vue 전용)
    * @returns {Promise<{rides: Array}>}
    */
   async getActiveRidesForAdmin() {
     const rides = await RideRepository.findActiveRidesAdmin();
+
+        // 프론트엔드에서 사용하기 쉽도록 데이터 매핑
+        const mappedRides = rides.map(ride => ({
+            rideId: ride.ride_id,
+            userId: ride.user_id,
+            pmId: ride.pm_id,
+            startTime: ride.start_time,
+            // (★수정★) Service에서 Alias를 사용해 location/battery를 프론트엔드 형식으로 맞춤
+            location: parseGeoJSON(ride.location),
+            battery: ride.battery,
+            safetyScore: ride.safety_score || 100 // (★추가★)
+        }));
+        return { rides: mappedRides };
+    }
 
     // 프론트엔드에서 사용하기 쉽도록 데이터 매핑
     const mappedRides = rides.map((ride) => ({

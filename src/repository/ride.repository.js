@@ -269,8 +269,8 @@ class RideRepository {
     }
 
     /**
-     * (★신규★) 현재 운행 중인(end_time = NULL) 모든 라이드 조회
-     * (RealtimeView.vue 전용)
+     * (★수정★) 현재 운행 중인(end_time = NULL) 모든 라이드 조회
+     * (RealtimeView.vue 전용 - t_user 테이블 JOIN 추가)
      */
     static async findActiveRidesAdmin() {
         try {
@@ -278,15 +278,18 @@ class RideRepository {
                 SELECT
                     r.ride_id, r.user_id, r.pm_id, r.start_time,
                     k.battery,
-                    ST_AsGeoJSON(k.location) AS location
+                    ST_AsGeoJSON(k.location) AS location,
+                    u.safety_score -- (★추가★) 사용자의 현재 안전 점수
                 FROM t_ride r
                          -- (★핵심 수정★) r.pm_id 를 BIGINT로 명시적 캐스팅하여 k.pm_id (BIGINT)와 JOIN
                          JOIN t_kickboard k ON r.pm_id::BIGINT = k.pm_id
+                         -- (★추가★) t_user 테이블을 JOIN하여 safety_score 가져오기
+                         JOIN t_user u ON r.user_id = u.user_id
                 WHERE r.end_time IS NULL
                 ORDER BY r.start_time DESC;
             `;
             const result = await db.query(query);
-            return result.rows; // [{ ride_id, user_id, pm_id, start_time, battery, location(GeoJSON) }]
+            return result.rows; // [{ ride_id, user_id, ..., battery, location, safety_score }]
         } catch (error) {
             console.error("DB Error (findActiveRidesAdmin):", error);
             throw error;
