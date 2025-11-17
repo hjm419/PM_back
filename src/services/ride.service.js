@@ -9,7 +9,7 @@ const RiskLogRepository = require("../repository/risk-log.repository");
 class RideService {
     /**
      * 라이드 시작
-     * (★수정★) is_helmet 추가
+     * (★수정★) t_kickboard 상태('in-use') 갱신 로직 추가
      */
     async startRide(userId, kickboardId, startLocation) {
         // (★수정★) v1.3 앱 API는 { latitude, longitude }지만,
@@ -27,6 +27,14 @@ class RideService {
             is_helmet: startLocation.is_helmet || false // (★수정★) 헬멧 정보
         });
 
+        // (★신규★) 운행 시작 시, t_kickboard의 상태와 위치도 함께 갱신
+        if (ride.pm_id) {
+            await KickboardRepository.update(ride.pm_id, {
+                pm_status: 'in_use', // (상태: 'in_use'로 변경)
+                location: locationObj // (위치: 'start_loc'으로 변경)
+            });
+        }
+
         return {
             rideId: ride.ride_id,
             userId: ride.user_id,
@@ -39,15 +47,16 @@ class RideService {
 
     /**
      * 라이드 종료 및 요금 계산
-     * @param {string} rideId
-     * @param {object} endLocation { latitude, longitude }
-     * @returns {Promise<{rideId, distance, duration, fare, score}>}
+     * (★수정★) t_kickboard 상태('available') 및 위치(end_loc) 갱신 로직 추가
      */
     async endRide(rideId, endLocation) {
         const ride = await RideRepository.findById(rideId);
         if (!ride) {
             throw new Error("Ride not found");
         }
+
+        // (★수정★) pm_id를 ride 객체에서 미리 가져옴
+        const pmId = ride.pm_id;
 
         const locationObj = {
             lat: endLocation.latitude || endLocation.lat,
@@ -85,6 +94,15 @@ class RideService {
 
         // (★신규★) DB에 최종 요금만 다시 업데이트
         await RideRepository.update(rideId, { fare: finalFare });
+
+        // (★핵심 수정★)
+        // 운행 종료 시, t_kickboard의 상태와 위치도 함께 갱신
+        if (pmId) {
+            await KickboardRepository.update(pmId, {
+                pm_status: 'available', // (상태: 'available'로 변경)
+                location: locationObj   // (위치: 'end_loc'으로 변경)
+            });
+        }
 
         return {
             rideId: updatedRide.ride_id,
