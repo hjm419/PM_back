@@ -155,6 +155,86 @@ class UserService {
     }));
   }
   /**
+   * (신규) 사용자의 운전 분석 데이터 조회 (앱용)
+   * @param {string|number} userId
+   * @returns {Promise<object>} 분석 결과
+   */
+  async getUserAnalysis(userId) {
+    // 1. 기본 사용자 정보 (안전점수)
+    const user = await UserRepository.findById(userId);
+    if (!user) return null;
+
+    // 2. 누적 통계 (주행 횟수, 거리, 시간)
+    const stats = await UserRepository.getUserProfileStats(userId);
+
+    // 3. 위험 로그 KPI별 집계
+    const kpiRows = await RiskLogRepository.countByUserGroupedByKpi(userId);
+
+    // 4. 리턴 포맷에 맞게 가공
+    const riskCounts = {
+      sudden_start: 0,
+      sudden_accel: 0,
+      sudden_stop: 0,
+      sudden_decel: 0,
+      sudden_turn: 0,
+    };
+
+    let helmetOffCount = 0;
+
+    kpiRows.forEach((r) => {
+      const name = String(r.kpi_name || "").toLowerCase();
+      const id = String(r.kpi_id || "").toLowerCase();
+      const cnt = parseInt(r.count || 0, 10);
+
+      // 헬멧 관련 KPI 식별
+      if (
+        name.includes("헬멧") ||
+        id.includes("helmet") ||
+        id.includes("helmet_off") ||
+        id.includes("helmetoff")
+      ) {
+        helmetOffCount += cnt;
+        return;
+      }
+
+      // 급출발/급가속/급정지/급감속/급회전 등 매핑 (한국어 기준)
+      if (name.includes("급출발") || id.includes("sudden_start"))
+        riskCounts.sudden_start += cnt;
+      else if (
+        name.includes("급가속") ||
+        id.includes("sudden_accel") ||
+        id.includes("sudden_acceleration")
+      )
+        riskCounts.sudden_accel += cnt;
+      else if (name.includes("급정지") || id.includes("sudden_stop"))
+        riskCounts.sudden_stop += cnt;
+      else if (
+        name.includes("급감속") ||
+        id.includes("sudden_decel") ||
+        id.includes("sudden_deceleration")
+      )
+        riskCounts.sudden_decel += cnt;
+      else if (
+        name.includes("급회전") ||
+        id.includes("sudden_turn") ||
+        id.includes("sharp_turn")
+      )
+        riskCounts.sudden_turn += cnt;
+      else {
+        // 기타 항목은 위험 카운트의 총합에서 무시하거나 확장 가능
+      }
+    });
+
+    return {
+      safetyScore: parseInt(user.safety_score || 100, 10),
+      totalRides: parseInt(stats.total_rides || 0, 10),
+      helmetOffCount: parseInt(helmetOffCount, 10),
+      totalDistance: parseFloat(stats.total_distance || 0),
+      totalDuration: parseInt(stats.total_duration || 0, 10),
+      riskCounts,
+    };
+  }
+  /**
    * (신규) 앱 내 정보 화면용 상세 조회
    */
   async getUserProfile(userId) {
