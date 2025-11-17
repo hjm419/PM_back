@@ -175,16 +175,33 @@ class RideService {
     }
 
     /**
-     * (★신규★) v1.3 명세서 (GET /api/admin/rides/{rideId}/path)
-     * 주행별 GPS 경로 조회
+     * (★핵심 수정★)
+     * v1.3 명세서 (GET /api/admin/rides/{rideId}/path)
+     * 주행별 GPS 경로 조회 (jsonb 파싱)
      */
     async getRidePath(rideId) {
+        // 1. Repository는 DB에서 데이터를 그대로 가져옴
+        // (결과 예: [{ ride_id: 18, path_data: [...] }])
         const pathRows = await RidePathRepository.findByRideId(rideId);
 
-        const pathData = pathRows.map(row => ({
-            location: parseGeoJSON(row.location), // (★PostGIS 파싱★)
-            speed: row.speed,
-            timestamp: row.timestamp
+        // 2. 주행 경로가 없는 경우
+        if (!pathRows || pathRows.length === 0 || !pathRows[0].path_data) {
+            return { pathData: [] };
+        }
+
+        // 3. path_data (jsonb 배열)를 프론트엔드가 요구하는 형식으로 파싱
+        // (path_data 예: [{"speed": 0, "latitude": 36.146, "longitude": 128.393, ...}, ...])
+        const pathJsonArray = pathRows[0].path_data;
+
+        // (★오류 수정★) parseGeoJSON 대신, jsonb 배열을 직접 파싱
+        const pathData = pathJsonArray.map(point => ({
+            // 4. 프론트엔드(RideHistoryTab.vue)는 { location: {lat, lng} } 형식을 기대함
+            location: {
+                lat: point.latitude,
+                lng: point.longitude
+            },
+            speed: point.speed,
+            timestamp: point.timestamp // (t_ride_path.csv에 timestamp가 있습니다)
         }));
 
         return { pathData: pathData }; // 명세서 형식 { pathData: [...] }
