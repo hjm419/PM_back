@@ -274,24 +274,56 @@ class RideRepository {
      */
     static async findActiveRidesAdmin() {
         try {
+            // (★핵심 수정★) t_user.user_id(varchar)를 BIGINT로 캐스팅
             const query = `
                 SELECT
                     r.ride_id, r.user_id, r.pm_id, r.start_time,
                     k.battery,
                     ST_AsGeoJSON(k.location) AS location,
-                    u.safety_score -- (★추가★) 사용자의 현재 안전 점수
+                    u.safety_score, -- (★추가★) 사용자의 현재 안전 점수
+                    r.accident       -- (★추가★) 사고 발생 여부 플래그
                 FROM t_ride r
-                         -- (★핵심 수정★) r.pm_id 를 BIGINT로 명시적 캐스팅하여 k.pm_id (BIGINT)와 JOIN
-                         JOIN t_kickboard k ON r.pm_id::BIGINT = k.pm_id
-                         -- (★추가★) t_user 테이블을 JOIN하여 safety_score 가져오기
-                         JOIN t_user u ON r.user_id = u.user_id
+                         JOIN t_kickboard k ON r.pm_id = k.pm_id
+                    -- (★핵심 수정★) r.user_id(bigint)와 u.user_id(varchar)를 캐스팅하여 JOIN
+                         JOIN t_user u ON r.user_id = u.user_id::BIGINT
                 WHERE r.end_time IS NULL
                 ORDER BY r.start_time DESC;
             `;
             const result = await db.query(query);
-            return result.rows; // [{ ride_id, user_id, ..., battery, location, safety_score }]
+            return result.rows; // [{ ride_id, user_id, ..., battery, location, safety_score, accident }]
         } catch (error) {
             console.error("DB Error (findActiveRidesAdmin):", error);
+            throw error;
+        }
+    }
+
+    /**
+     * (★신규★) 최근 24시간 이내에 '종료된' '사고' 주행 목록 조회
+     * (RealtimeView.vue가 로드 시점에 캐시하기 위함)
+     */
+    static async findRecentCompletedAccidents(interval) {
+        try {
+            // (★핵심 수정★) t_user.user_id(varchar)를 BIGINT로 캐스팅
+            const query = `
+                SELECT
+                    r.ride_id, r.user_id, r.pm_id, r.start_time, r.end_time,
+                    k.battery,
+                    ST_AsGeoJSON(k.location) AS location,
+                    u.safety_score,
+                    r.accident
+                FROM t_ride r
+                         JOIN t_kickboard k ON r.pm_id = k.pm_id
+                    -- (★핵심 수정★) r.user_id(bigint)와 u.user_id(varchar)를 캐스팅하여 JOIN
+                         JOIN t_user u ON r.user_id = u.user_id::BIGINT
+                WHERE r.end_time IS NOT NULL                 -- 1. 운행이 종료되었고
+                  AND r.accident = true                      -- 2. 사고가 발생했으며
+                  AND r.end_time >= (NOW() - $1::interval) -- 3. 최근 N시간 이내에 종료됨
+                ORDER BY r.end_time DESC;
+            `;
+            const result = await db.query(query, [interval]);
+            return result.rows;
+        } catch (error) {
+            console.error("DB Error (findRecentCompletedAccidents):", error);
             throw error;
         }
     }

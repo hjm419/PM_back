@@ -6,6 +6,12 @@ const rideController = require("../../controllers/ride.controller");
 // (이 부분이 404 오류를 해결합니다)
 router.get("/active", rideController.getActiveRides);
 
+// (★신규★) 실시간 관제용 (최근 종료된 사고 목록)
+router.get(
+    "/recent-accidents",
+    rideController.getRecentCompletedAccidents
+);
+
 // 주행 기록 조회 (RideHistoryTab용)
 router.get("/", rideController.getAllRides);
 

@@ -327,6 +327,33 @@ class RideService {
             location: parseGeoJSON(ride.location),
             battery: ride.battery,
             safetyScore: ride.safety_score || 100, // (★추가★)
+            accident: ride.accident || false, // (★추가★)
+            status: "active", // (★추가★)
+        }));
+        return { rides: mappedRides };
+    }
+
+    /**
+     * (★신규★) 최근 24시간 이내 종료된 사고 주행 목록 조회
+     * @param {number} hours
+     * @returns {Promise<{rides: Array}>}
+     */
+    async getRecentCompletedAccidents(hours = 24) {
+        const interval = `${hours} hours`;
+        const rides = await RideRepository.findRecentCompletedAccidents(interval);
+
+        // 프론트엔드에서 사용하기 쉽도록 데이터 매핑
+        const mappedRides = rides.map((ride) => ({
+            rideId: ride.ride_id,
+            userId: ride.user_id,
+            pmId: ride.pm_id,
+            startTime: ride.start_time, // (UserList.vue 포맷팅을 위해 start_time 전달)
+            endTime: ride.end_time, // (★신규★) '종료됨'을 판단하기 위해 endTime 전달
+            location: parseGeoJSON(ride.location), // 킥보드의 *현재* 위치/배터리
+            battery: ride.battery,
+            safetyScore: ride.safety_score || 100,
+            accident: ride.accident || false,
+            status: "completed", // (★추가★)
         }));
         return { rides: mappedRides };
     }
