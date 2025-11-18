@@ -172,6 +172,23 @@ const getActiveRides = async (req, res, next) => {
         next(error);
     }
 };
+const getRideSummary = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+
+    const result = await rideService.getRideSummary(rideId);
+
+    return res.status(200).json({
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error getting ride summary:", error);
+    if (error.message === "Ride not found") {
+      return res.status(404).json({ message: "주행 기록을 찾을 수 없습니다." });
+    }
+    return res.status(500).json({ message: "서버 내부 오류" });
+  }
+};
 
 /**
  * (★신규★) GET /api/admin/rides/recent-accidents
@@ -203,6 +220,7 @@ module.exports = {
     getAllRides,
     getRideRiskLogs,
     getRidePath,
-    getActiveRides, // (★신규★)
+    getActiveRides,
+    getRideSummary,
     getRecentCompletedAccidents, // (★신규★)
 };
