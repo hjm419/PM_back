@@ -14,7 +14,7 @@ class RiskLogRepository {
       const query = `
                 SELECT
                     log_id, ride_id, kpi_id, "timestamp",
-                    ST_AsGeoJSON(location) AS location, created_at
+                    ST_AsGeoJSON(location) AS location
                 FROM t_risk_log
                 WHERE ride_id = $1
             `;
