@@ -83,6 +83,7 @@ class RideService {
       lat: endLocation.latitude || endLocation.lat,
       lng: endLocation.longitude || endLocation.lng,
     };
+    const isAccident = endPayload.accident || false;
 
     // 2. 시간 및 기본 요금 계산
     const startTime = new Date(ride.start_time);
@@ -195,6 +196,7 @@ class RideService {
       fare: finalFare,
       is_helmet: isHelmetFlag,
       score: computedScore,
+      accident: isAccident,
       // total_distance_km: finalDistance // 필요시 주석 해제
     });
 
@@ -317,45 +319,46 @@ class RideService {
   async getActiveRidesForAdmin() {
     const rides = await RideRepository.findActiveRidesAdmin();
 
-        // 프론트엔드에서 사용하기 쉽도록 데이터 매핑
-        const mappedRides = rides.map((ride) => ({
-            rideId: ride.ride_id,
-            userId: ride.user_id,
-            pmId: ride.pm_id,
-            startTime: ride.start_time,
-            // (★수정★) Service에서 Alias를 사용해 location/battery를 프론트엔드 형식으로 맞춤
-            location: parseGeoJSON(ride.location),
-            battery: ride.battery,
-            safetyScore: ride.safety_score || 100, // (★추가★)
-            accident: ride.accident || false, // (★추가★)
-            status: "active", // (★추가★)
-        }));
-        return { rides: mappedRides };
-    }
+    // 프론트엔드에서 사용하기 쉽도록 데이터 매핑
+    const mappedRides = rides.map((ride) => ({
+      rideId: ride.ride_id,
+      userId: ride.user_id,
+      pmId: ride.pm_id,
+      startTime: ride.start_time,
+      // (★수정★) Service에서 Alias를 사용해 location/battery를 프론트엔드 형식으로 맞춤
+      location: parseGeoJSON(ride.location),
+      battery: ride.battery,
+      safetyScore: ride.safety_score || 100, // (★추가★)
+      accident: ride.accident || false, // (★추가★)
+      status: "active", // (★추가★)
+    }));
+    return { rides: mappedRides };
+  }
 
-    /**
-     * (★신규★) 최근 24시간 이내 종료된 사고 주행 목록 조회
-     * @param {number} hours
-     * @returns {Promise<{rides: Array}>}
-     */
-    async getRecentCompletedAccidents(hours = 24) {
-        const interval = `${hours} hours`;
-        const rides = await RideRepository.findRecentCompletedAccidents(interval);
+  /**
+   * (★신규★) 최근 24시간 이내 종료된 사고 주행 목록 조회
+   * @param {number} hours
+   * @returns {Promise<{rides: Array}>}
+   */
+  async getRecentCompletedAccidents(hours = 24) {
+    const interval = `${hours} hours`;
+    const rides = await RideRepository.findRecentCompletedAccidents(interval);
 
-        // 프론트엔드에서 사용하기 쉽도록 데이터 매핑
-        const mappedRides = rides.map((ride) => ({
-            rideId: ride.ride_id,
-            userId: ride.user_id,
-            pmId: ride.pm_id,
-            startTime: ride.start_time, // (UserList.vue 포맷팅을 위해 start_time 전달)
-            endTime: ride.end_time, // (★신규★) '종료됨'을 판단하기 위해 endTime 전달
-            location: parseGeoJSON(ride.location), // 킥보드의 *현재* 위치/배터리
-            battery: ride.battery,
-            safetyScore: ride.safety_score || 100,
-            accident: ride.accident || false,
-            status: "completed", // (★추가★)
-        }));
-        return { rides: mappedRides };}
+    // 프론트엔드에서 사용하기 쉽도록 데이터 매핑
+    const mappedRides = rides.map((ride) => ({
+      rideId: ride.ride_id,
+      userId: ride.user_id,
+      pmId: ride.pm_id,
+      startTime: ride.start_time, // (UserList.vue 포맷팅을 위해 start_time 전달)
+      endTime: ride.end_time, // (★신규★) '종료됨'을 판단하기 위해 endTime 전달
+      location: parseGeoJSON(ride.location), // 킥보드의 *현재* 위치/배터리
+      battery: ride.battery,
+      safetyScore: ride.safety_score || 100,
+      accident: ride.accident || false,
+      status: "completed", // (★추가★)
+    }));
+    return { rides: mappedRides };
+  }
 
   /**
    * 주행 요약 정보 조회
