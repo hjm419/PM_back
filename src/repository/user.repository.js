@@ -264,11 +264,7 @@ class UserRepository {
                 (safety_score * (1 - ($2 / ($2 + ${inertia})))) + 
                 ($1 * ($2 / ($2 + ${inertia})))
               )
-          END,
-
-          -- 2. 총 주행 거리 누적 (단순 합산)
-          -- total_distance_km 컬럼이 없다면 이 줄은 삭제하거나 추가해야 함
-          total_distance_km = COALESCE(total_distance_km, 0) + $2
+          END
 
         WHERE user_id = $3
       `;

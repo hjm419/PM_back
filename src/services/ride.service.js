@@ -177,8 +177,8 @@ class RideService {
         : dbDistance;
 
     // 8. 최종 요금 계산
-    const distanceFare = finalDistance * 100;
-    const finalFare = Math.floor(baseFare + timeFare + distanceFare);
+    let distanceFare = finalDistance * 100;
+    let finalFare = Math.floor(baseFare + timeFare + distanceFare);
 
     //유저의 안전 점수가 90점 이상이면 10% 할인
     const user = await UserRepository.findById(ride.user_id);
