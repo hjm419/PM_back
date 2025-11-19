@@ -184,7 +184,7 @@ class RideService {
     const user = await UserRepository.findById(ride.user_id);
     let isDiscounted = false;
     if (user && user.safety_score >= 90) {
-      const discount = Math.floor(finalFare * 0.1);
+      let discount = Math.floor(finalFare * 0.1);
       finalFare -= discount;
       isDiscounted = true;
     }
