@@ -180,6 +180,15 @@ class RideService {
     const distanceFare = finalDistance * 100;
     const finalFare = Math.floor(baseFare + timeFare + distanceFare);
 
+    //유저의 안전 점수가 90점 이상이면 10% 할인
+    const user = await UserRepository.findById(ride.user_id);
+    let isDiscounted = false;
+    if (user && user.safety_score >= 90) {
+      const discount = Math.floor(finalFare * 0.1);
+      finalFare -= discount;
+      isDiscounted = true;
+    }
+
     // (★신규★) DB에 최종 요금만 다시 업데이트
     await RideRepository.update(rideId, { fare: finalFare });
 
@@ -216,6 +225,7 @@ class RideService {
       fare: finalFare,
       distance: finalDistance,
       duration: duration,
+      isDiscounted: isDiscounted,
     };
   }
 
