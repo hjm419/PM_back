@@ -92,6 +92,7 @@ class RideService {
 
     const baseFare = 1000;
     const timeFare = duration * 200;
+    let finalFare = Math.floor(baseFare + timeFare);
 
     // 3. 위험 로그 저장 및 감점 계산
     let totalDeduction = 0;
@@ -175,10 +176,6 @@ class RideService {
       providedDistance && Number(providedDistance) > 0
         ? Number(providedDistance)
         : dbDistance;
-
-    // 8. 최종 요금 계산
-    let distanceFare = finalDistance * 100;
-    let finalFare = Math.floor(baseFare + timeFare + distanceFare);
 
     //유저의 안전 점수가 90점 이상이면 10% 할인
     const user = await UserRepository.findById(ride.user_id);
